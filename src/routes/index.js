@@ -6,6 +6,7 @@
 // =====================================================================
 const { Router } = require('express');
 const { revisarSalud } = require('../controllers/salud.controller');
+const rutasSedes = require('./sedes.routes');
 
 const enrutador = Router();
 
@@ -13,5 +14,6 @@ const enrutador = Router();
 enrutador.get('/salud', revisarSalud);
 
 // ---- Módulos del equipo (cada integrante agrega su línea aquí) ----
+enrutador.use('/sedes', rutasSedes);         // CRUD de Sedes (Alejandro)
 
 module.exports = enrutador;
