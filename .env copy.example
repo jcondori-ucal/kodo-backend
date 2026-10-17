@@ -1,0 +1,14 @@
+# Copia este archivo como .env  (cp .env.example .env)
+# .env NO se sube a GitHub (está en .gitignore)
+
+# API
+PORT=4000
+CORS_ORIGIN=http://localhost:3000
+
+# Base de datos (los mismos valores usa docker-compose.yml)
+DB_HOST=localhost
+DB_PORT=3307
+DB_USER=kodo
+DB_PASSWORD=kodo123
+DB_NAME=kodo_db
+MYSQL_ROOT_PASSWORD=root123
