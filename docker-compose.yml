@@ -1,0 +1,38 @@
+# Solo la base de datos corre en Docker. La API se ejecuta en tu máquina con npm.
+# Levantar:  docker compose up -d      Detener:  docker compose down
+# Reiniciar la BD desde cero (borra los datos):  docker compose down -v && docker compose up -d
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: kodo_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123}
+      MYSQL_DATABASE: ${DB_NAME:-kodo_db}
+      MYSQL_USER: ${DB_USER:-kodo}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-kodo123}
+    ports:
+      # 3307 en tu máquina para no chocar con un MySQL local (Workbench: localhost:3307)
+      - "3307:3306"
+    volumes:
+      - kodo_mysql_data:/var/lib/mysql
+      # Los .sql de /database se ejecutan solo la PRIMERA vez (volumen vacío), en orden alfabético
+      - ./database:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Visor web de la BD para tus capturas: http://localhost:8081  (servidor: mysql · usuario: kodo · clave: kodo123)
+  adminer:
+    image: adminer
+    container_name: kodo_adminer
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    depends_on:
+      - mysql
+
+volumes:
+  kodo_mysql_data:
