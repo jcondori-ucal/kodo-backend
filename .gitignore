@@ -1,0 +1,11 @@
+# Dependencias (se instalan con npm install)
+node_modules/
+
+# Variables de entorno con claves: NUNCA se suben
+.env
+
+# Basura del sistema operativo y del editor
+.DS_Store
+__MACOSX/
+Thumbs.db
+npm-debug.log*

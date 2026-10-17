@@ -1,0 +1,28 @@
+{
+  "name": "kodo-api",
+  "version": "1.0.0",
+  "description": "API REST de Kodo Motors: módulos de Sedes y Servicios con Node.js, Express y MySQL",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "bd:levantar": "docker compose up -d",
+    "bd:detener": "docker compose down",
+    "bd:reiniciar": "docker compose down -v && docker compose up -d"
+  },
+  "keywords": ["kodo-motors", "api-rest", "express", "mysql", "ucal"],
+  "author": "Felipe, Rachel, Anthony, Omar y Alejandro",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "2.8.5",
+    "dotenv": "17.4.2",
+    "express": "5.2.1",
+    "mysql2": "3.24.4"
+  },
+  "devDependencies": {
+    "nodemon": "3.1.14"
+  }
+}
