@@ -2,7 +2,7 @@
   "name": "backend-ee2-u2",
   "version": "1.0.0",
   "description": "API REST de Kodo Motors con arquitectura por capas.",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
     "start": "node main.js",
     "dev": "node --watch main.js"
@@ -10,6 +10,7 @@
   "private": true,
   "dependencies": {
     "dotenv": "^17.2.3",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "mysql2": "^3.24.6"
   }
 }
