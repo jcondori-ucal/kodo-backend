@@ -247,7 +247,7 @@ Casos de error con los mismos datos de prueba:
 - **Colección:** `Kodo Motors · QA EE2`, con 32 casos (R-01 a R-18 de repuestos y E-01 a E-14 de encuestas), organizados en carpetas GET, POST, PUT y DELETE. Cada caso trae tests que verifican el código HTTP y el mensaje real.
 - **Ejecución:** `docker compose down -v && docker compose up -d`, luego `npm run dev`, y en Postman *Run collection*. R-08 y E-04 guardan el id creado en `{{repuestoId}}` y `{{encuestaId}}` para que R-16 y E-13 eliminen ese mismo registro.
 - **Resultado (17/10/2026, MySQL 8.4 en Docker):** 32 casos, 32 conformes y 0 no conformes.
-- **Reporte:** *TEAM 01 - Plantilla pruebas QAS - Repuestos y Encuestas* (formato UCAL-TECH E-QA-001), con la petición, el resultado esperado, el resultado obtenido y la captura de cada caso.
+- **Reporte:** *G1+G4 - Pruebas QAS - Repuestos y Encuestas* (formato UCAL-TECH E-QA-001), con la petición, el resultado esperado, el resultado obtenido y la captura de cada caso.
 
 ---
 
