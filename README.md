@@ -39,15 +39,7 @@ API REST con persistencia en MySQL para gestionar los **locales (sedes)** y el *
 
 ## 2. Integrantes
 
-<!-- Completar los apellidos y confirmar el nombre real de cada rama -->
-
-| Integrante | Parte del proyecto | Archivos | Rama |
-| --- | --- | --- | --- |
-| Felipe Reyes Ingunza | Base del proyecto, Docker, base de datos, conexión, manejo de errores | `package.json`, `docker-compose.yml`, `database/`, `src/app.js`, `src/server.js`, `src/config/`, `src/utils/`, `src/middlewares/`, `src/routes/index.js` | `main` |
-| Rachel | Lógica de negocio de Servicios | `src/services/servicios.service.js` | `Servicios-servicios` |
-| Anthony | Controlador y rutas de Servicios | `src/controllers/servicios.controller.js`, `src/routes/servicios.routes.js` | `feature/servicios-rutas` |
-| Omar | Lógica de negocio de Sedes | `src/services/sedes.service.js` | `feature/sedes-servicio` |
-| Alejandro | Controlador y rutas de Sedes | `src/controllers/sedes.controller.js`, `src/routes/sedes.routes.js` | `feature/sedes-rutas` |
+Felipe Reyes Ingunza, Rachel, Anthony, Omar y Alejandro.
 
 ## 3. Tecnologías
 
@@ -92,8 +84,18 @@ flowchart TB
     end
 
     subgraph servicios["Capa de servicios · src/services"]
-        logicaServicios["servicios.service.js<br/>validación + SQL"]
-        logicaSedes["sedes.service.js<br/>validación + SQL"]
+        logicaServicios["servicios.service.js<br/>orquesta y lanza 404"]
+        logicaSedes["sedes.service.js<br/>orquesta y lanza 404"]
+    end
+
+    subgraph modelos["Capa de modelos · src/models"]
+        modeloServicio["servicio.model.js<br/>reglas de validación"]
+        modeloSede["sede.model.js<br/>reglas de validación"]
+    end
+
+    subgraph repositorios["Capa de repositorios · src/repositories"]
+        repoServicios["servicios.repository.js<br/>SQL"]
+        repoSedes["sedes.repository.js<br/>SQL"]
     end
 
     subgraph datos["Configuración y datos"]
@@ -108,12 +110,16 @@ flowchart TB
     indice --> rutasServicios --> ctrlServicios --> logicaServicios
     indice --> rutasSedes --> ctrlSedes --> logicaSedes
     indice --> rutaSalud --> ctrlSalud
-    logicaServicios --> pool
-    logicaSedes --> pool
+    logicaServicios --> modeloServicio
+    logicaSedes --> modeloSede
+    logicaServicios --> repoServicios
+    logicaSedes --> repoSedes
+    repoServicios --> pool
+    repoSedes --> pool
     ctrlSalud --> pool
     pool --> mysql
-    logicaServicios -.usa.-> utilidades
-    logicaSedes -.usa.-> utilidades
+    modeloServicio -.usa.-> utilidades
+    modeloSede -.usa.-> utilidades
     ctrlServicios -.next error.-> errores
     ctrlSedes -.next error.-> errores
     ctrlSalud -.next error.-> errores
@@ -123,7 +129,9 @@ flowchart TB
 | --- | --- | --- |
 | Rutas | Asocia cada método y URL con una función del controlador | No lee datos ni responde |
 | Controladores | Lee `req.params`, `req.query` y `req.body`, llama al servicio y responde con `res.status().json()` | No valida reglas ni toca la base de datos |
-| Servicios | Valida los datos, aplica las reglas del negocio y ejecuta el SQL | No conoce `req` ni `res` |
+| Servicios | Coordina el flujo: llama al modelo para validar y al repositorio para guardar o consultar, y lanza el 404 si no existe el registro | No conoce `req` ni `res`, no escribe SQL |
+| Modelos | Define los campos permitidos, las constantes y las reglas de validación de cada entidad | No toca la base de datos |
+| Repositorios | Ejecuta el SQL con consultas preparadas y devuelve las filas | No valida reglas ni lanza errores HTTP |
 | Configuración | Crea el pool de conexiones a MySQL | — |
 | Middleware de errores | Traduce cualquier error a un código HTTP y un mensaje claro | — |
 
@@ -153,6 +161,12 @@ flowchart LR
     src --> services["services/"]
     services --> sServ["servicios.service.js"]
     services --> sSedes["sedes.service.js"]
+    src --> models["models/"]
+    models --> mServ["servicio.model.js"]
+    models --> mSede["sede.model.js"]
+    src --> repositories["repositories/"]
+    repositories --> rpServ["servicios.repository.js"]
+    repositories --> rpSedes["sedes.repository.js"]
     src --> middlewares["middlewares/"]
     middlewares --> mErr["manejarErrores.js"]
     src --> utils["utils/"]
@@ -188,6 +202,12 @@ kodo-api/
 │   ├── services/
 │   │   ├── servicios.service.js
 │   │   └── sedes.service.js
+│   ├── models/
+│   │   ├── servicio.model.js  # campos, constantes y validación de Servicio
+│   │   └── sede.model.js      # campos, constantes y validación de Sede
+│   ├── repositories/
+│   │   ├── servicios.repository.js  # SQL de servicios
+│   │   └── sedes.repository.js      # SQL de sedes
 │   ├── middlewares/
 │   │   └── manejarErrores.js  # 404 de rutas y errores en un solo lugar
 │   └── utils/
@@ -210,6 +230,8 @@ sequenceDiagram
     participant Ruta as servicios.routes.js
     participant Ctrl as servicios.controller.js
     participant Serv as servicios.service.js
+    participant Mod as servicio.model.js
+    participant Repo as servicios.repository.js
     participant BD as MySQL
     participant Err as manejarErrores.js
 
@@ -218,15 +240,21 @@ sequenceDiagram
     App->>Ruta: /api/servicios
     Ruta->>Ctrl: registrarServicio(req, res, next)
     Ctrl->>Serv: crearServicio(req.body)
-    Serv->>Serv: revisa campos y valida reglas
+    Serv->>Mod: revisa campos y valida reglas
     alt Datos válidos
-        Serv->>BD: INSERT INTO servicios VALUES (?, ?, ...)
-        BD-->>Serv: insertId = 6
-        Serv->>BD: SELECT * FROM servicios WHERE id = 6
-        BD-->>Serv: fila guardada
+        Mod-->>Serv: datos limpios
+        Serv->>Repo: crear(datos)
+        Repo->>BD: INSERT INTO servicios VALUES (?, ?, ...)
+        BD-->>Repo: insertId = 6
+        Repo-->>Serv: 6
+        Serv->>Repo: buscarPorId(6)
+        Repo->>BD: SELECT * FROM servicios WHERE id = 6
+        BD-->>Repo: fila guardada
+        Repo-->>Serv: servicio
         Serv-->>Ctrl: servicio nuevo
         Ctrl-->>Cliente: 201 Created + JSON
     else Datos inválidos o nombre repetido
+        Mod-->>Serv: error 400 (o 409 desde MySQL)
         Serv-->>Ctrl: error
         Ctrl->>Err: next(error)
         Err-->>Cliente: 400 o 409 + mensaje
