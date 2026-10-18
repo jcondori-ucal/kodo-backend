@@ -1,17 +1,6 @@
-// =====================================================================
-// controllers/sedes.controller.js · Recibe la petición y responde
-// Responsable: Alejandro (Parte 5)
-//
-// El controlador NO toca la base de datos. Solo:
-//   1. lee lo que llega (req.params, req.query, req.body)
-//   2. llama a la capa de servicio (sedes.service.js)
-//   3. responde al cliente con res.status().json()
-// Si algo falla, pasa el error a manejarErrores con next(error).
-// =====================================================================
 const logicaSedes = require('../services/sedes.service');
 const { convertirId } = require('../utils/validaciones');
 
-// GET /api/sedes  ->  200 con la lista (acepta ?distrito= y ?activa=)
 async function obtenerSedes(req, res, next) {
   try {
     const listaSedes = await logicaSedes.listarSedes(req.query);
@@ -25,7 +14,6 @@ async function obtenerSedes(req, res, next) {
   }
 }
 
-// GET /api/sedes/:id  ->  200 con la sede, o 404 si no existe
 async function obtenerSedePorId(req, res, next) {
   try {
     const idSede = convertirId(req.params.id);
@@ -36,7 +24,6 @@ async function obtenerSedePorId(req, res, next) {
   }
 }
 
-// POST /api/sedes  ->  201 (creado) con la sede nueva
 async function registrarSede(req, res, next) {
   try {
     const sedeNueva = await logicaSedes.crearSede(req.body);
@@ -50,7 +37,6 @@ async function registrarSede(req, res, next) {
   }
 }
 
-// PUT /api/sedes/:id  ->  200 con la sede actualizada
 async function modificarSede(req, res, next) {
   try {
     const idSede = convertirId(req.params.id);
@@ -65,7 +51,6 @@ async function modificarSede(req, res, next) {
   }
 }
 
-// DELETE /api/sedes/:id  ->  200 con la sede que se eliminó
 async function borrarSede(req, res, next) {
   try {
     const idSede = convertirId(req.params.id);
