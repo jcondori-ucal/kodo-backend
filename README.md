@@ -243,9 +243,19 @@ Casos de error con los mismos datos de prueba:
 
 ---
 
+## Pruebas (Postman y reporte QAS)
+- **Colección:** `Kodo Motors · QA EE2`, con 32 casos (R-01 a R-18 de repuestos y E-01 a E-14 de encuestas), organizados en carpetas GET, POST, PUT y DELETE. Cada caso trae tests que verifican el código HTTP y el mensaje real.
+- **Ejecución:** `docker compose down -v && docker compose up -d`, luego `npm run dev`, y en Postman *Run collection*. R-08 y E-04 guardan el id creado en `{{repuestoId}}` y `{{encuestaId}}` para que R-16 y E-13 eliminen ese mismo registro.
+- **Resultado (17/10/2026, MySQL 8.4 en Docker):** 32 casos, 32 conformes y 0 no conformes.
+- **Reporte:** *TEAM 01 - Plantilla pruebas QAS - Repuestos y Encuestas* (formato UCAL-TECH E-QA-001), con la petición, el resultado esperado, el resultado obtenido y la captura de cada caso.
+
+---
+
 ## 10. Observaciones y Problemas Resueltos durante la Integración
 1. **Precios DECIMAL como texto:** `mysql2` devuelve las columnas `DECIMAL` como texto (`"45.00"`). El modelo `Repuesto.fromRow()` las convierte con `Number(row.precio)`, así la API responde `45` como número.
 2. **`stock_minimo` de 0 convertido en 5:** el repositorio guardaba el valor con `Number(stock_minimo) || 5`, y como `0` es falso en JavaScript, un `stock_minimo` de 0 se registraba como 5. Se corrigió con `Number(stock_minimo ?? 5)`, que solo usa 5 cuando el campo no se envía. Verificado contra MySQL.
 3. **Historial de `main` reorganizado:** el historial de `main` se reorganizó para que cada integrante suba su capa desde su propia rama mediante Pull Request.
 
-[Agregar aquí los conflictos o incidencias reales que surjan al integrar las ramas]
+4. **Rama sin historial común con `main`:** `feature/encuestas-qa-docs` se subió desde un clon anterior a la reorganización del historial. GitHub no permite abrir un Pull Request entre ramas sin un commit común. La solución es crear la rama desde `origin/main` actualizado y subir allí los archivos, sin usar `push --force`.
+5. **JSON mal formado devolvía HTML:** un body como `{"codigo": "MAL"` hacía que Express respondiera una página HTML 400, con el stack y rutas del disco. Se corrige con un middleware de error de 4 parámetros en `app.js`, que responde `400 {"error": "El cuerpo de la solicitud no es un JSON válido"}`.
+6. **Acentos del seed (`AtenciÃ³n`, `Rosa DÃ­az`):** el contenedor ejecuta `02_seed.sql` con `character_set_client = latin1`, y el texto UTF-8 se guarda doblemente codificado. Lo que entra por la API se guarda bien. Se corrige agregando `SET NAMES utf8mb4;` al inicio de los scripts SQL.
