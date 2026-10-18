@@ -1,2 +1,6 @@
 .env
+<<<<<<< HEAD
+.xd
+=======
 node_modules/
+>>>>>>> 5c9d7fab43dcfce7703ce912570aac129dab7797
