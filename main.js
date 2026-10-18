@@ -2,24 +2,32 @@ require('dotenv').config({ quiet: true });
 
 const express = require('express');
 const pool = require('./src/config/db');
+const reservaRoutes = require('./src/routes/reserva.routes');
+const lookupsRoutes = require('./src/routes/lookups.routes');
+const { noEncontrado, errorHandler } = require('./src/middlewares/errorHandler');
 
 const app = express();
 const puerto = Number(process.env.PORT) || 4000;
 
 app.use(express.json());
 
-app.get('/api/db-check', async (req, res) => {
+// Comprobación de conexión a la base de datos
+app.get('/api/db-check', async (req, res, next) => {
   try {
     await pool.query('SELECT 1');
     res.json({ estado: 'ok', mensaje: 'Conexión a MySQL exitosa' });
   } catch (error) {
-    res.status(500).json({ estado: 'error', codigo: error.code });
+    next(error);
   }
 });
 
-app.use((req, res) => {
-  res.status(404).json({ error: 'Ruta no encontrada' });
-});
+// Rutas por recurso
+app.use('/api/reservas', reservaRoutes);
+app.use('/api', lookupsRoutes);
+
+// 404 y manejo central de errores (siempre al final)
+app.use(noEncontrado);
+app.use(errorHandler);
 
 app.listen(puerto, () => {
   console.log(`Servidor escuchando en http://localhost:${puerto}`);
