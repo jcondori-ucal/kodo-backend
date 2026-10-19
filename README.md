@@ -14,8 +14,10 @@ Evidencia Evaluativa 2 · Curso *Fundamentos de Desarrollo Back-End* · UCAL.
 | 1 | Jesús Valencia | Reservas | Estructura base, conexión a BD, servicio, controlador y rutas |
 | 2 | Jefferson Mamani | Reservas | Repositorios y consultas SQL |
 | 3 | Piero Batti | Reservas | Manejo central de errores, README y colección Postman |
-| 4 | Edgard Huamán | Catálogo | Módulo de catálogo en 5 capas |
-| 5 | (nombre) | Catálogo | (responsabilidad) |
+| 4 | Edgard Huamán | Catálogo |Routes y Controlador|
+| 5 | José Jacinto| Catálogo | Service y Repositorio|
+| 6 | Heimer Quispe| Catálogo | Modelos, colección Postman|
+
 
 ## 2. Empresa / caso asignado
 
