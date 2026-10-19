@@ -1,6 +1,7 @@
 require('dotenv').config({ quiet: true });
 
 const express = require('express');
+const catalogoRoutes = require('./src/routes/catalogo.routes');
 const pool = require('./src/config/db');
 const reservaRoutes = require('./src/routes/reserva.routes');
 const lookupsRoutes = require('./src/routes/lookups.routes');
@@ -22,6 +23,7 @@ app.get('/api/db-check', async (req, res, next) => {
 });
 
 // Rutas por recurso
+app.use('/api/catalogo', catalogoRoutes);
 app.use('/api/reservas', reservaRoutes);
 app.use('/api', lookupsRoutes);
 
