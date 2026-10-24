@@ -1,11 +1,11 @@
 /**
- * Rutas del recurso Reservas. Se montan en /api/reservas desde main.js.
+ * Rutas del recurso Reservas. Se montan en /api/reservas desde src/routes/index.js.
  *
- *   GET    /api/reservas          lista (filtros: ?estado=&fecha=&sede_id=)
+ *   GET    /api/reservas          lista (filtros: ?estado=&fecha=&sede_id=&incluir_inactivos=true)
  *   GET    /api/reservas/:id      una reserva
  *   POST   /api/reservas          crea
  *   PUT    /api/reservas/:id      actualiza
- *   DELETE /api/reservas/:id      elimina
+ *   DELETE /api/reservas/:id      da de baja (borrado lógico)
  */
 const { Router } = require('express');
 const controlador = require('../controllers/reserva.controller');

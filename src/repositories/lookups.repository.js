@@ -1,30 +1,28 @@
 /**
  * Consultas de solo lectura sobre las tablas de las que depende Reservas.
- * No hacemos CRUD de sedes, servicios ni vehículos: solo verificamos
- * que el ID exista antes de guardar (las foreign keys de la tabla reservas).
+ * Sedes y servicios tienen su propio CRUD; aquí solo se verifica que el ID exista
+ * y esté activo antes de guardar una reserva (borrado lógico).
  */
-const pool = require('../config/db');
+const { pool } = require('../config/db');
 
-async function existeEn(tabla, id) {
-  const [rows] = await pool.query(`SELECT id FROM ${tabla} WHERE id = ? LIMIT 1`, [id]);
+// tabla y columna son constantes de este archivo, nunca datos del usuario
+async function existeActivo(tabla, columnaActiva, id) {
+  const [rows] = await pool.query(
+    `SELECT id FROM ${tabla} WHERE id = ? AND ${columnaActiva} = 1 LIMIT 1`,
+    [id],
+  );
   return rows.length > 0;
 }
 
-const existeSede = (id) => existeEn('sedes', id);
-const existeServicio = (id) => existeEn('servicios', id);
-const existeVehiculo = (id) => existeEn('vehiculos', id);
-
-/** Listados simples para que el cliente sepa qué IDs usar. */
-async function listarSedes() {
-  const [rows] = await pool.query('SELECT id, nombre, distrito FROM sedes WHERE activa = 1 ORDER BY nombre');
-  return rows;
+async function existeVehiculo(id) {
+  const [rows] = await pool.query('SELECT id FROM vehiculos WHERE id = ? LIMIT 1', [id]);
+  return rows.length > 0;
 }
 
-async function listarServicios() {
-  const [rows] = await pool.query('SELECT id, nombre, categoria, precio, duracion_min FROM servicios WHERE activo = 1 ORDER BY nombre');
-  return rows;
-}
+const existeSede = (id) => existeActivo('sedes', 'activa', id);
+const existeServicio = (id) => existeActivo('servicios', 'activo', id);
 
+/** Listado simple para que el cliente sepa qué vehiculo_id usar al crear una reserva. */
 async function listarVehiculos() {
   const [rows] = await pool.query('SELECT id, placa, modelo, anio, contacto_id FROM vehiculos ORDER BY placa');
   return rows;
@@ -34,7 +32,5 @@ module.exports = {
   existeSede,
   existeServicio,
   existeVehiculo,
-  listarSedes,
-  listarServicios,
   listarVehiculos,
 };

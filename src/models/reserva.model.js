@@ -6,7 +6,9 @@
  * No accede a la base de datos: de eso se encarga el repositorio.
  *
  * Columnas de la tabla:
- *   id, fecha, hora, sede_id, servicio_id, vehiculo_id, estado, observacion, created_at
+ *   id, fecha, hora, sede_id, servicio_id, vehiculo_id, estado, observacion, activo, created_at
+ *
+ * activo es la bandera del borrado lógico: solo cambia con DELETE, nunca desde el body.
  */
 
 const ESTADOS = ['pendiente', 'confirmada', 'cancelada', 'atendida'];
@@ -67,6 +69,10 @@ function validar(datos = {}, { parcial = false } = {}) {
     }
   }
 
+  if (datos.activo !== undefined) {
+    errores.push("El campo 'activo' no se puede enviar; para dar de baja usa DELETE");
+  }
+
   return errores;
 }
 
@@ -103,6 +109,7 @@ function desdeFila(fila) {
     hora: typeof fila.hora === 'string' ? fila.hora.slice(0, 5) : fila.hora,
     estado: fila.estado,
     observacion: fila.observacion ?? null,
+    activo: Boolean(fila.activo),
     created_at: fila.created_at,
   };
 
