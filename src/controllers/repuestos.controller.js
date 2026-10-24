@@ -9,7 +9,8 @@ async function listar(req, res) {
   try {
     const filtros = {
       modelo_compatible: req.query.modelo_compatible,
-      bajo_stock: req.query.bajo_stock
+      bajo_stock: req.query.bajo_stock,
+      incluir_inactivos: req.query.incluir_inactivos
     };
     const repuestos = await repuestosService.listar(filtros);
     res.status(200).json(repuestos);
