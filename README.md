@@ -30,24 +30,21 @@ Evidencia Evaluativa 2): sedes, servicios, catálogo de vehículos, reservas, re
 El proyecto une el trabajo de tres equipos. El historial de git conserva los commits originales
 de cada uno (ver [Trabajo colaborativo](#trabajo-colaborativo-en-github)).
 
+Solo figuran quienes tienen commits; cada responsabilidad corresponde a lo que muestra el historial de git.
+
 | Integrante | Módulo | Responsabilidad |
 |---|---|---|
 | Rachel Duarte | Sedes y Servicios | Base del proyecto en `main` (configuración, Docker, base de datos, conexión a MySQL y manejo de errores); capas de modelos y repositorios; colección Postman; integración de las ramas y resolución del conflicto en `routes/index.js`; fusión de los tres repositorios en `kodo-motor-backend` |
-| Felipe Reyes Ingunza | Servicios | Capa de servicio |
-| Omar Vargas | Sedes | Capa de servicio |
-| Alejandro | Sedes y Servicios | Controladores y rutas |
-| Anthony | Sedes y Servicios | Controladores y rutas |
-| Jesús Valencia | Reservas | Estructura base, conexión a BD, servicio, controlador y rutas |
-| Jefferson Mamani | Reservas | Repositorios y consultas SQL |
-| Piero Batti | Reservas | Manejo central de errores, README y colección Postman |
-| Edgard Huamán | Catálogo | Rutas y controlador |
-| José Jacinto | Catálogo | Servicio y repositorio |
-| Heimer Quispe | Catálogo | Modelos y colección Postman |
-| Ivan Hermilio Mera Ibarguen | Repuestos y Encuestas | Arquitectura base, Express y pool MySQL |
-| Geraldo Fair Jaramillo Florida | Repuestos | Modelo y repositorio SQL |
-| Sharmili Luzmer Soncco Lupa | Repuestos | Servicio, controlador y rutas |
-| Adso Martin Obregon Gutierrez | Encuestas | Modelo y repositorio con JOIN |
-| Lenin David Mamani Sarmiento | Encuestas | Servicio, controlador, rutas, Postman y documentación |
+| Felipe Reyes Ingunza | Servicios | Capa de servicio (`servicios.service.js`) |
+| Omar Vargas | Sedes | Capa de servicio (`sedes.service.js`) |
+| Alejandro (alemarquina) | Sedes y Servicios | Controladores y rutas de `/api/sedes` y `/api/servicios` |
+| Jesús Valencia | Reservas | Estructura base y base de datos inicial (Docker, esquema y seed); conexión a MySQL; archivos base de reservas (modelo, repositorio, servicio, controlador y rutas); rutas de consulta de vehículos |
+| Jefferson Mamani | Reservas | Repositorios de reservas y de consultas (lookups); README inicial |
+| Piero Batti | Reservas | Modelo de reserva; manejo central de errores y validación de id; README y colección Postman de reservas; integración del módulo de catálogo |
+| Edgard Huamán | Catálogo | Módulo de catálogo completo en 5 capas (modelo, repositorio, servicio, controlador y rutas); resolución del conflicto en `main.js`; README |
+| Ivan Hermilio Mera Ibarguen | Repuestos y Encuestas | Arquitectura base (Express, pool MySQL, Docker, esquema y seed); estructura inicial de repuestos y encuestas; plantilla de ficha técnica; borrado lógico, reglas de negocio y `test-suite.js` |
+| Geraldo Fair Jaramillo Florida | Repuestos y Encuestas | Modelo y repositorio de repuestos; integración de servicios, controladores y rutas de repuestos y encuestas; README y banner; revisión e integración de los pull requests |
+| Adso | Encuestas | Modelo de encuesta y repositorio con JOIN a órdenes de servicio |
 
 ## 3. Empresa aliada
 
