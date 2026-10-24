@@ -1,16 +1,17 @@
 # Solo la base de datos corre en Docker. La API se ejecuta en tu máquina con npm.
 # Levantar:  docker compose up -d      Detener:  docker compose down
 # Reiniciar la BD desde cero (borra los datos):  docker compose down -v && docker compose up -d
+# Las credenciales se leen del archivo .env (cópialo desde .env.example). Si falta alguna, Docker se detiene y la nombra.
 services:
   mysql:
     image: mysql:8.4
     container_name: kodo_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123}
-      MYSQL_DATABASE: ${DB_NAME:-kodo_db}
-      MYSQL_USER: ${DB_USER:-kodo}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-kodo123}
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?Falta MYSQL_ROOT_PASSWORD en el .env}"
+      MYSQL_DATABASE: "${DB_NAME:?Falta DB_NAME en el .env}"
+      MYSQL_USER: "${DB_USER:?Falta DB_USER en el .env}"
+      MYSQL_PASSWORD: "${DB_PASSWORD:?Falta DB_PASSWORD en el .env}"
     ports:
       # 3307 en tu máquina para no chocar con un MySQL local (Workbench: localhost:3307)
       - "3307:3306"
@@ -24,7 +25,8 @@ services:
       timeout: 5s
       retries: 20
 
-  # Visor web de la BD para tus capturas: http://localhost:8081  (servidor: mysql · usuario: kodo · clave: kodo123)
+  # Visor web de la BD para las capturas: http://localhost:8081
+  # Servidor: mysql · usuario y contraseña: los de DB_USER y DB_PASSWORD de tu .env
   adminer:
     image: adminer
     container_name: kodo_adminer

@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS vehiculos (
   CONSTRAINT fk_vehiculo_contacto FOREIGN KEY (contacto_id) REFERENCES contactos(id)
 );
 
---  Reservas de citas
+--  Reservas de citas (con borrado lógico)
 CREATE TABLE IF NOT EXISTS reservas (
   id           INT AUTO_INCREMENT PRIMARY KEY,
   fecha        DATE         NOT NULL,
@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS reservas (
   vehiculo_id  INT          NOT NULL,
   estado       ENUM('pendiente','confirmada','cancelada','atendida') NOT NULL DEFAULT 'pendiente',
   observacion  VARCHAR(255) NULL,
+  activo       TINYINT(1)   NOT NULL DEFAULT 1,
   created_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_reserva_sede     FOREIGN KEY (sede_id)     REFERENCES sedes(id),
   CONSTRAINT fk_reserva_servicio FOREIGN KEY (servicio_id) REFERENCES servicios(id),
@@ -89,7 +90,7 @@ CREATE TABLE IF NOT EXISTS ordenes_servicio (
 
 -- ---------- Opciones complementarias ------------------------------------
 
--- · Catálogo de vehículos nuevos
+-- · Catálogo de vehículos nuevos (con borrado lógico)
 CREATE TABLE IF NOT EXISTS catalogo (
   id           INT AUTO_INCREMENT PRIMARY KEY,
   modelo       ENUM('Mazda2','Mazda3','CX-3','CX-30','CX-5','CX-50','CX-90','BT-50','MX-5') NOT NULL,
@@ -100,6 +101,7 @@ CREATE TABLE IF NOT EXISTS catalogo (
   combustible  ENUM('gasolina','hibrido','diesel') NOT NULL,
   transmision  ENUM('mecanica','automatica') NOT NULL,
   destacado    TINYINT(1)    NOT NULL DEFAULT 0,
+  activo       TINYINT(1)    NOT NULL DEFAULT 1,
   UNIQUE KEY uq_catalogo (modelo, version, anio)
 );
 
