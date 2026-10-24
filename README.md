@@ -30,24 +30,24 @@ Evidencia Evaluativa 2): sedes, servicios, catálogo de vehículos, reservas, re
 El proyecto une el trabajo de tres equipos. El historial de git conserva los commits originales
 de cada uno (ver [Trabajo colaborativo](#trabajo-colaborativo-en-github)).
 
-| Equipo | Integrante | Módulo | Responsabilidad |
-|---|---|---|---|
-| E03 | Felipe Reyes Ingunza | Sedes y Servicios | Base del proyecto en `main` y revisión de los pull requests |
-| E03 | Rachel Duarte | Servicios | Capa de servicio; conexión a MySQL; fusión de los tres repositorios |
-| E03 | Omar Vargas | Sedes | Capa de servicio |
-| E03 | Anthony | Sedes y Servicios | Controladores y rutas |
-| E03 | Alejandro | Sedes y Servicios | Controladores y rutas; resolución del conflicto en `routes/index.js` |
-| u2 | Jesús Valencia | Reservas | Estructura base, conexión a BD, servicio, controlador y rutas |
-| u2 | Jefferson Mamani | Reservas | Repositorios y consultas SQL |
-| u2 | Piero Batti | Reservas | Manejo central de errores, README y colección Postman |
-| u2 | Edgard Huamán | Catálogo | Rutas y controlador |
-| u2 | José Jacinto | Catálogo | Servicio y repositorio |
-| u2 | Heimer Quispe | Catálogo | Modelos y colección Postman |
-| Grupo1-4 | Ivan Hermilio Mera Ibarguen | Repuestos y Encuestas | Arquitectura base, Express y pool MySQL |
-| Grupo1-4 | Geraldo Fair Jaramillo Florida | Repuestos | Modelo y repositorio SQL |
-| Grupo1-4 | Sharmili Luzmer Soncco Lupa | Repuestos | Servicio, controlador y rutas |
-| Grupo1-4 | Adso Martin Obregon Gutierrez | Encuestas | Modelo y repositorio con JOIN |
-| Grupo1-4 | Lenin David Mamani Sarmiento | Encuestas | Servicio, controlador, rutas, Postman y documentación |
+| Integrante | Módulo | Responsabilidad |
+|---|---|---|
+| Rachel Duarte | Sedes y Servicios | Base del proyecto en `main` (configuración, Docker, base de datos, conexión a MySQL y manejo de errores); capas de modelos y repositorios; colección Postman; integración de las ramas y resolución del conflicto en `routes/index.js`; fusión de los tres repositorios en `kodo-motor-backend` |
+| Felipe Reyes Ingunza | Servicios | Capa de servicio |
+| Omar Vargas | Sedes | Capa de servicio |
+| Alejandro | Sedes y Servicios | Controladores y rutas |
+| Anthony | Sedes y Servicios | Controladores y rutas |
+| Jesús Valencia | Reservas | Estructura base, conexión a BD, servicio, controlador y rutas |
+| Jefferson Mamani | Reservas | Repositorios y consultas SQL |
+| Piero Batti | Reservas | Manejo central de errores, README y colección Postman |
+| Edgard Huamán | Catálogo | Rutas y controlador |
+| José Jacinto | Catálogo | Servicio y repositorio |
+| Heimer Quispe | Catálogo | Modelos y colección Postman |
+| Ivan Hermilio Mera Ibarguen | Repuestos y Encuestas | Arquitectura base, Express y pool MySQL |
+| Geraldo Fair Jaramillo Florida | Repuestos | Modelo y repositorio SQL |
+| Sharmili Luzmer Soncco Lupa | Repuestos | Servicio, controlador y rutas |
+| Adso Martin Obregon Gutierrez | Encuestas | Modelo y repositorio con JOIN |
+| Lenin David Mamani Sarmiento | Encuestas | Servicio, controlador, rutas, Postman y documentación |
 
 ## 3. Empresa aliada
 
@@ -248,16 +248,23 @@ En ese caso, en el `.env`: `DB_PORT=3306` (o el puerto de tu MySQL).
 | El trigger de encuestas se creaba con `latin1` | `01_schema.sql` no tenía `SET NAMES utf8mb4` | Se agregó al inicio del esquema; además `.gitattributes` fuerza fin de línea LF en los `.sql` |
 | Contenedor `kodo_mysql` ya en uso | Los repos anteriores usaban el mismo nombre de contenedor | Detener el contenedor del repo anterior (`docker compose down` en su carpeta) antes de levantar este |
 
-### Heredados de cada equipo
+### Durante el desarrollo de los módulos
 
-- **E03:** conflicto de merge en `src/routes/index.js` (dos integrantes agregaron rutas en las mismas líneas);
-  `DECIMAL` llegaba como texto y `TINYINT(1)` como 0/1 (se resolvió con `decimalNumbers` y `typeCast` en `db.js`);
-  el teléfono perdía el 0 inicial (se exige como texto de 9 dígitos).
-- **u2:** conflicto de merge en `.gitignore`; un commit en una rama distinta a la acordada; reservas y catálogo
-  tenían dos sistemas de errores; cada PC usaba un puerto de MySQL distinto (se parametrizó en `.env`).
-- **Grupo1-4:** `stock_minimo` de 0 se guardaba como 5 (`||` en lugar de `??`); JSON mal formado devolvía una
-  página HTML con rutas del disco; tildes mal guardadas en el seed; rama sin historial común con `main`;
-  borrado lógico y trigger para que solo se encuesten órdenes entregadas.
+| Problema | Causa | Solución |
+|---|---|---|
+| Conflicto de merge en `src/routes/index.js` | Dos integrantes agregaron sus rutas en las mismas líneas del archivo | Se conservaron las rutas de ambos, se quitaron las marcas `<<<<<<<`, `=======` y `>>>>>>>` y se completó el merge |
+| Conflicto de merge en `.gitignore` | Dos integrantes editaron el archivo en ramas distintas | Se resolvió en Visual Studio Code conservando las reglas de las dos ramas |
+| Trabajo subido a una rama distinta de la acordada | Un integrante subió su parte a `feature/errores-y-docs` | Se integró a `main` con `git merge` |
+| Una rama no permitía abrir un pull request | `feature/encuestas-qa-docs` se subió desde un clon anterior y no tenía historial común con `main` | Se creó la rama desde `origin/main` actualizado, sin `push --force` |
+| El precio llegaba como texto (`"380.00"`) | mysql2 devuelve las columnas `DECIMAL` como texto | `decimalNumbers: true` en el pool de `db.js` |
+| Las banderas llegaban como `1` y `0` | MySQL guarda `TINYINT(1)` como número | `typeCast` en `db.js` que las convierte en `true` y `false` |
+| El teléfono perdía el 0 inicial | Enviado como número, `014567890` se vuelve `14567890` | El teléfono se exige como texto de 9 dígitos |
+| Un `stock_minimo` de 0 se guardaba como 5 | `Number(stock_minimo) \|\| 5` trata el 0 como falso | Se cambió por `Number(stock_minimo ?? 5)`, que usa 5 solo si el campo no llega |
+| Un JSON mal formado devolvía una página HTML con rutas del disco | Express no tenía un manejador de errores de 4 parámetros | Middleware de errores que responde `400` en JSON |
+| Las tildes del seed se guardaban mal (`AtenciÃ³n`) | El contenedor ejecutaba los `.sql` con `latin1` | `SET NAMES utf8mb4;` al inicio de los scripts SQL |
+| Reservas y catálogo respondían los errores con formatos distintos | Cada módulo tenía su propia clase de error | Se unificaron en una sola clase y un manejador central |
+| Cada PC usaba un puerto de MySQL distinto | Docker publica el 3307, MySQL instalado usa el 3306 y XAMPP otro | El puerto se configura en `.env`, sin tocar código |
+| Riesgo de subir las claves de la base de datos | El `.env` tiene usuario y contraseña | `.env` está en `.gitignore`; solo se sube `.env.example` |
 
 ### Trabajo colaborativo en GitHub
 
