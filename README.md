@@ -37,7 +37,7 @@ Solo figuran quienes tienen commits; cada responsabilidad corresponde a lo que m
 | Rachel Duarte | Sedes y Servicios | Base del proyecto en `main` (configuración, Docker, base de datos, conexión a MySQL y manejo de errores); capas de modelos y repositorios; colección Postman; integración de las ramas y resolución del conflicto en `routes/index.js`; fusión de los tres repositorios en `kodo-motor-backend` |
 | Felipe Reyes Ingunza | Servicios | Capa de servicio (`servicios.service.js`) |
 | Omar Vargas | Sedes | Capa de servicio (`sedes.service.js`) |
-| Alejandro (alemarquina) | Sedes y Servicios | Controladores y rutas de `/api/sedes` y `/api/servicios` |
+| Alessandro Arias (alemarquina) | Sedes y Servicios | Controladores y rutas de `/api/sedes` y `/api/servicios` |
 | Jesús Valencia | Reservas | Estructura base y base de datos inicial (Docker, esquema y seed); conexión a MySQL; archivos base de reservas (modelo, repositorio, servicio, controlador y rutas); rutas de consulta de vehículos |
 | Jefferson Mamani | Reservas | Repositorios de reservas y de consultas (lookups); README inicial |
 | Piero Batti | Reservas | Modelo de reserva; manejo central de errores y validación de id; README y colección Postman de reservas; integración del módulo de catálogo |
