@@ -1,11 +1,11 @@
 /**
  * Repositorio: Acceso a Datos de Encuestas (Kodo Motors)
- * Consultas SQL parametrizadas e integración con ordenes_servicio.
+ * Consultas SQL parametrizadas e integración con ordenes_servicio con soporte de Soft Delete.
  */
 const { pool } = require('../config/db');
 const Encuesta = require('../models/encuesta.model');
 
-async function findAll({ puntuacion, recomendaria } = {}) {
+async function findAll({ puntuacion, recomendaria, incluir_inactivas } = {}) {
   let sql = `
     SELECT e.*, o.tecnico, o.costo, o.estado AS orden_estado
     FROM encuestas e
@@ -13,6 +13,11 @@ async function findAll({ puntuacion, recomendaria } = {}) {
     WHERE 1=1
   `;
   const params = [];
+
+  // Soft Delete: por defecto solo listar encuestas activas
+  if (incluir_inactivas !== 'true' && incluir_inactivas !== true) {
+    sql += ' AND e.activo = 1';
+  }
 
   if (puntuacion) {
     sql += ' AND e.puntuacion = ?';
@@ -40,14 +45,20 @@ async function findAll({ puntuacion, recomendaria } = {}) {
   });
 }
 
-async function findById(id) {
-  const sql = `
+async function findById(id, { incluir_inactivas = false } = {}) {
+  let sql = `
     SELECT e.*, o.tecnico, o.costo, o.estado AS orden_estado
     FROM encuestas e
     LEFT JOIN ordenes_servicio o ON e.orden_id = o.id
     WHERE e.id = ?
   `;
-  const [rows] = await pool.query(sql, [id]);
+  const params = [id];
+
+  if (!incluir_inactivas) {
+    sql += ' AND e.activo = 1';
+  }
+
+  const [rows] = await pool.query(sql, params);
   if (rows.length === 0) return null;
 
   const encuesta = Encuesta.fromRow(rows[0]);
@@ -78,8 +89,8 @@ async function findOrdenServicioById(ordenId) {
 
 async function create({ orden_id, puntuacion, recomendaria, comentario = null }) {
   const [result] = await pool.query(
-    `INSERT INTO encuestas (orden_id, puntuacion, recomendaria, comentario)
-     VALUES (?, ?, ?, ?)`,
+    `INSERT INTO encuestas (orden_id, puntuacion, recomendaria, comentario, activo)
+     VALUES (?, ?, ?, ?, 1)`,
     [
       Number(orden_id),
       Number(puntuacion),
@@ -95,7 +106,7 @@ async function update(id, { puntuacion, recomendaria, comentario }) {
   await pool.query(
     `UPDATE encuestas
      SET puntuacion = ?, recomendaria = ?, comentario = ?
-     WHERE id = ?`,
+     WHERE id = ? AND activo = 1`,
     [
       Number(puntuacion),
       recomendaria === true || recomendaria === 1 || recomendaria === '1' ? 1 : 0,
@@ -107,8 +118,19 @@ async function update(id, { puntuacion, recomendaria, comentario }) {
   return await findById(id);
 }
 
+/**
+ * Soft Delete: En lugar de DELETE físico, actualiza 'activo' a 0
+ */
 async function remove(id) {
-  const [result] = await pool.query('DELETE FROM encuestas WHERE id = ?', [id]);
+  const [result] = await pool.query('UPDATE encuestas SET activo = 0 WHERE id = ? AND activo = 1', [id]);
+  return result.affectedRows > 0;
+}
+
+/**
+ * Reactivación lógica de encuesta
+ */
+async function restore(id) {
+  const [result] = await pool.query('UPDATE encuestas SET activo = 1 WHERE id = ? AND activo = 0', [id]);
   return result.affectedRows > 0;
 }
 
@@ -119,5 +141,6 @@ module.exports = {
   findOrdenServicioById,
   create,
   update,
-  remove
+  remove,
+  restore
 };

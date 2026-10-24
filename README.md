@@ -64,14 +64,15 @@ Kodo-motor-Grupo1-4/
 |---|---|---|
 | Repuestos | `alertaBajoStock` es `true` cuando `stock <= stock_minimo` | Se informa en cada repuesto devuelto |
 | Repuestos | El `codigo` es único (se guarda en mayúsculas) | 400 |
-| Repuestos | No se elimina un repuesto con `stock > 0` | 400 |
+| Repuestos | **Soft Delete:** No se elimina un repuesto con `stock > 0`; si tiene stock 0 se da de baja lógica (`activo = 0`) | 400 |
 | Repuestos | `precio` mayor a 0; `stock` y `stock_minimo` enteros mayores o iguales a 0 | 400 |
 | Encuestas | La orden de servicio debe existir | 404 |
-| Encuestas | Solo se encuestan órdenes en estado `'entregado'` | 400 |
+| Encuestas | **Solo se encuestan órdenes en estado `'entregado'`** (validado en servicio y trigger BD) | 400 |
 | Encuestas | Una sola encuesta por orden | 400 |
+| Encuestas | **Soft Delete:** La eliminación de encuesta es lógica (`activo = 0`), manteniendo trazabilidad | 200 |
 | Encuestas | `puntuacion` es un entero de 1 a 5 | 400 |
 | Ambos | El `:id` de la URL debe ser un entero positivo | 400 |
-| Ambos | El `:id` no existe | 404 |
+| Ambos | El `:id` no existe o fue dado de baja lógica | 404 |
 
 Los errores se responden con el formato `{ "error": "...", "detalles": [...] }`; `detalles` solo aparece en los errores de validación de campos. Un error no controlado responde 500.
 
@@ -146,15 +147,15 @@ La API queda disponible en `http://localhost:4000` (puerto definido por `PORT` e
 ### Módulo 11: Repuestos (`/api/repuestos`)
 | Método | Endpoint | Descripción | Códigos HTTP |
 |---|---|---|---|
-| **GET** | `/api/repuestos` | Lista los repuestos. Filtros opcionales: `?modelo_compatible=CX-5` y `?bajo_stock=true` (solo los que tienen `stock <= stock_minimo`) | 200 |
-| **GET** | `/api/repuestos/:id` | Detalle de un repuesto | 200, 400, 404 |
+| **GET** | `/api/repuestos` | Lista los repuestos activos. Filtros opcionales: `?modelo_compatible=CX-5`, `?bajo_stock=true` (solo con `stock <= stock_minimo`) y `?incluir_inactivos=true` | 200 |
+| **GET** | `/api/repuestos/:id` | Detalle de un repuesto activo (si fue dado de baja lógica responde 404) | 200, 400, 404 |
 | **POST** | `/api/repuestos` | Registra un repuesto. Obligatorios: `codigo`, `nombre`, `modelo_compatible`, `precio`. Opcionales: `stock` (0 por defecto), `stock_minimo` (5 por defecto), `ubicacion` | 201, 400 |
 | **PUT** | `/api/repuestos/:id` | Actualiza solo los campos enviados; si cambia el `codigo`, valida que no lo tenga otro repuesto | 200, 400, 404 |
-| **DELETE** | `/api/repuestos/:id` | Elimina el repuesto solo si su `stock` es 0 | 200, 400, 404 |
+| **DELETE** | `/api/repuestos/:id` | **Soft Delete:** Da de baja lógica (`activo = 0`) el repuesto solo si su `stock` es 0; preserva el registro para auditoría | 200, 400, 404 |
 
 `modelo_compatible` acepta: `Mazda2`, `Mazda3`, `CX-3`, `CX-30`, `CX-5`, `CX-50`, `CX-90`, `BT-50`, `MX-5`, `Todos`.
 
-Con los datos de prueba, `GET /api/repuestos?bajo_stock=true` devuelve los repuestos 1 (filtro de aceite, stock 2 de mínimo 10) y 3 (pastillas Mazda3, stock 3 de mínimo 4). Todos los repuestos del seed tienen stock, así que para probar el DELETE primero se pone `stock` en 0 con un PUT.
+Con los datos de prueba, `GET /api/repuestos?bajo_stock=true` devuelve los repuestos 1 (filtro de aceite, stock 2 de mínimo 10) y 3 (pastillas Mazda3, stock 3 de mínimo 4). Todos los repuestos del seed tienen stock, así que para probar el DELETE primero se pone `stock` en 0 con un PUT. Al darlo de baja, se realiza un soft delete (`activo = 0`), por lo que deja de aparecer en los GET habituales sin perder la trazabilidad histórica en la base de datos.
 
 **Ejemplo: `POST /api/repuestos`**
 ```json
@@ -187,11 +188,11 @@ Si se envía de nuevo el mismo `codigo`, responde `400` con `Ya existe un repues
 ### Módulo 12: Encuestas (`/api/encuestas`)
 | Método | Endpoint | Descripción | Códigos HTTP |
 |---|---|---|---|
-| **GET** | `/api/encuestas` | Lista las encuestas con `detallesOrden` (`tecnico`, `costo`, `estado`) obtenido por LEFT JOIN con `ordenes_servicio`. Filtros opcionales: `?puntuacion=5` y `?recomendaria=true` (o `1`; cualquier otro valor filtra las que no recomendarían) | 200 |
-| **GET** | `/api/encuestas/:id` | Detalle de una encuesta, también con `detallesOrden` | 200, 400, 404 |
-| **POST** | `/api/encuestas` | Registra una encuesta. Obligatorios: `orden_id`, `puntuacion`, `recomendaria`. Opcional: `comentario` (máx. 300 caracteres) | 201, 400, 404 |
+| **GET** | `/api/encuestas` | Lista las encuestas activas con `detallesOrden` (`tecnico`, `costo`, `estado`) obtenido por LEFT JOIN con `ordenes_servicio`. Filtros opcionales: `?puntuacion=5`, `?recomendaria=true` (o `1`) y `?incluir_inactivas=true` | 200 |
+| **GET** | `/api/encuestas/:id` | Detalle de una encuesta activa, también con `detallesOrden` (404 si fue dada de baja lógica) | 200, 400, 404 |
+| **POST** | `/api/encuestas` | Registra una encuesta. **Solo se permite si la orden de servicio está en estado `'entregado'`** (validado en la capa de negocio y blindado con trigger en MySQL). Obligatorios: `orden_id`, `puntuacion`, `recomendaria`. Opcional: `comentario` (máx. 300 caracteres) | 201, 400, 404 |
 | **PUT** | `/api/encuestas/:id` | Actualiza `puntuacion`, `recomendaria` o `comentario`; la orden asociada no cambia | 200, 400, 404 |
-| **DELETE** | `/api/encuestas/:id` | Elimina la encuesta y devuelve un mensaje de confirmación con la encuesta eliminada | 200, 400, 404 |
+| **DELETE** | `/api/encuestas/:id` | **Soft Delete:** Da de baja lógica la encuesta (`activo = 0`), manteniendo el histórico para métricas | 200, 400, 404 |
 
 `recomendaria` se envía como booleano JSON (`true` / `false`) o como número (`1` / `0`).
 
@@ -255,7 +256,9 @@ Casos de error con los mismos datos de prueba:
 1. **Precios DECIMAL como texto:** `mysql2` devuelve las columnas `DECIMAL` como texto (`"45.00"`). El modelo `Repuesto.fromRow()` las convierte con `Number(row.precio)`, así la API responde `45` como número.
 2. **`stock_minimo` de 0 convertido en 5:** el repositorio guardaba el valor con `Number(stock_minimo) || 5`, y como `0` es falso en JavaScript, un `stock_minimo` de 0 se registraba como 5. Se corrigió con `Number(stock_minimo ?? 5)`, que solo usa 5 cuando el campo no se envía. Verificado contra MySQL.
 3. **Historial de `main` reorganizado:** el historial de `main` se reorganizó para que cada integrante suba su capa desde su propia rama mediante Pull Request.
-
 4. **Rama sin historial común con `main`:** `feature/encuestas-qa-docs` se subió desde un clon anterior a la reorganización del historial. GitHub no permite abrir un Pull Request entre ramas sin un commit común. La solución es crear la rama desde `origin/main` actualizado y subir allí los archivos, sin usar `push --force`.
 5. **JSON mal formado devolvía HTML:** un body como `{"codigo": "MAL"` hacía que Express respondiera una página HTML 400, con el stack y rutas del disco. Se corrige con un middleware de error de 4 parámetros en `app.js`, que responde `400 {"error": "El cuerpo de la solicitud no es un JSON válido"}`.
 6. **Acentos del seed (`AtenciÃ³n`, `Rosa DÃ­az`):** el contenedor ejecuta `02_seed.sql` con `character_set_client = latin1`, y el texto UTF-8 se guarda doblemente codificado. Lo que entra por la API se guarda bien. Se corrige agregando `SET NAMES utf8mb4;` al inicio de los scripts SQL.
+7. **Soft Delete (Borrado Lógico) en Repuestos y Encuestas:** Siguiendo la observación del docente, se reemplazó el borrado físico (`DELETE FROM`) por Soft Delete mediante la columna `activo TINYINT(1) NOT NULL DEFAULT 1` en ambas tablas. Los endpoints `DELETE /api/repuestos/:id` y `DELETE /api/encuestas/:id` actualizan `activo = 0`. Esto garantiza la persistencia del histórico para auditoría y métricas de satisfacción del taller, manteniendo el filtro automático en los `GET` para excluir inactivos salvo que se use `?incluir_inactivos=true` / `?incluir_inactivas=true`.
+8. **Restricción de Encuestas solo a Órdenes Entregadas:** Se aseguró la regla de negocio de que únicamente órdenes con estado `'entregado'` pueden recibir encuestas. Esto se encuentra validado en la capa de servicio (`encuestas.service.js`) con respuesta `400 Bad Request` y reforzado a nivel de motor de datos con el trigger `trg_encuesta_solo_orden_entregada` en MySQL (`01_schema.sql`).
+9. **Eliminación de contraseñas por defecto en el código (`db.js`):** Atendiendo a la buena práctica de seguridad (CWE-259 / CWE-798), se retiró el fallback quemado de contraseña (`'kodo123'`) en `src/config/db.js`. Ahora las credenciales de conexión son administradas exclusivamente por variables de entorno a través del archivo `.env` (el cual no se expone en el repositorio por `.gitignore`), emitiendo advertencia si la variable `DB_PASSWORD` no estuviera configurada.

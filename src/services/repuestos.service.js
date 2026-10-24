@@ -37,7 +37,11 @@ async function crear(datos) {
   // 2. Regla de negocio: El código de repuesto debe ser único
   const existente = await repuestosRepository.findByCodigo(datos.codigo);
   if (existente) {
-    throw new HttpError(400, `Ya existe un repuesto registrado con el código "${datos.codigo.trim().toUpperCase()}"`);
+    if (existente.activo) {
+      throw new HttpError(400, `Ya existe un repuesto registrado con el código "${datos.codigo.trim().toUpperCase()}"`);
+    } else {
+      throw new HttpError(400, `El código "${datos.codigo.trim().toUpperCase()}" pertenece a un repuesto que fue dado de baja (ID #${existente.id}). Debe reactivarlo o utilizar un código diferente.`);
+    }
   }
 
   // 3. Crear en base de datos
@@ -82,14 +86,17 @@ async function eliminar(id) {
   if (existente.stock > 0) {
     throw new HttpError(
       400,
-      `No se puede eliminar el repuesto "${existente.nombre}" porque todavía cuenta con stock disponible (${existente.stock} unidades). Ajuste el stock a 0 antes de darlo de baja.`
+      `No se puede dar de baja el repuesto "${existente.nombre}" porque todavía cuenta con stock disponible (${existente.stock} unidades). Ajuste el stock a 0 antes de darlo de baja.`
     );
   }
 
   await repuestosRepository.remove(idValido);
   return {
-    mensaje: `Repuesto "${existente.nombre}" (Código: ${existente.codigo}) eliminado exitosamente del catálogo.`,
-    repuestoEliminado: existente
+    mensaje: `Repuesto "${existente.nombre}" (Código: ${existente.codigo}) dado de baja exitosamente (soft delete).`,
+    repuestoEliminado: {
+      ...existente,
+      activo: false
+    }
   };
 }
 

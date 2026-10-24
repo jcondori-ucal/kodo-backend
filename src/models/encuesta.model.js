@@ -9,7 +9,8 @@ class Encuesta {
     puntuacion,
     recomendaria,
     comentario = null,
-    created_at = null
+    created_at = null,
+    activo = 1
   }) {
     this.id = id ? Number(id) : undefined;
     this.ordenId = Number(orden_id);
@@ -17,6 +18,7 @@ class Encuesta {
     this.recomendaria = Boolean(Number(recomendaria));
     this.comentario = comentario ? String(comentario).trim() : null;
     this.createdAt = created_at;
+    this.activo = Boolean(Number(activo));
   }
 
   static fromRow(row) {
@@ -27,7 +29,8 @@ class Encuesta {
       puntuacion: row.puntuacion,
       recomendaria: row.recomendaria,
       comentario: row.comentario,
-      created_at: row.created_at
+      created_at: row.created_at,
+      activo: row.activo !== undefined ? row.activo : 1
     });
   }
 

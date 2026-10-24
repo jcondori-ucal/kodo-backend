@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS pagos (
   CONSTRAINT fk_pago_orden FOREIGN KEY (orden_id) REFERENCES ordenes_servicio(id)
 );
 
---  · Repuestos e inventario
+--  · Repuestos e inventario (con soft delete)
 CREATE TABLE IF NOT EXISTS repuestos (
   id                 INT AUTO_INCREMENT PRIMARY KEY,
   codigo             VARCHAR(20)  NOT NULL UNIQUE,
@@ -153,10 +153,11 @@ CREATE TABLE IF NOT EXISTS repuestos (
   stock              INT          NOT NULL DEFAULT 0,
   stock_minimo       INT          NOT NULL DEFAULT 5,
   precio             DECIMAL(8,2) NOT NULL,
-  ubicacion          VARCHAR(20)  NULL
+  ubicacion          VARCHAR(20)  NULL,
+  activo             TINYINT(1)   NOT NULL DEFAULT 1
 );
 
---  · Encuestas de satisfacción
+--  · Encuestas de satisfacción (con soft delete y validación de orden entregada)
 CREATE TABLE IF NOT EXISTS encuestas (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   orden_id      INT          NOT NULL UNIQUE,
@@ -164,8 +165,26 @@ CREATE TABLE IF NOT EXISTS encuestas (
   recomendaria  TINYINT(1)   NOT NULL,
   comentario    VARCHAR(300) NULL,
   created_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  activo        TINYINT(1)   NOT NULL DEFAULT 1,
   CONSTRAINT fk_encuesta_orden FOREIGN KEY (orden_id) REFERENCES ordenes_servicio(id)
 );
+
+-- Trigger de integridad: asegura en BD que solo se registren encuestas para órdenes entregadas
+DROP TRIGGER IF EXISTS trg_encuesta_solo_orden_entregada;
+DELIMITER $$
+CREATE TRIGGER trg_encuesta_solo_orden_entregada
+BEFORE INSERT ON encuestas
+FOR EACH ROW
+BEGIN
+  DECLARE v_estado VARCHAR(20);
+  SELECT estado INTO v_estado FROM ordenes_servicio WHERE id = NEW.orden_id;
+  IF v_estado IS NULL THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La orden de servicio asociada no existe.';
+  ELSEIF v_estado != 'entregado' THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Solo se pueden registrar encuestas para ordenes de servicio con estado entregado.';
+  END IF;
+END$$
+DELIMITER ;
 
 --  · Promociones y cupones
 CREATE TABLE IF NOT EXISTS promociones (

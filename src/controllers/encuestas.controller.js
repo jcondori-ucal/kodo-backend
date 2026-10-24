@@ -9,7 +9,8 @@ async function listar(req, res) {
   try {
     const filtros = {
       puntuacion: req.query.puntuacion,
-      recomendaria: req.query.recomendaria
+      recomendaria: req.query.recomendaria,
+      incluir_inactivas: req.query.incluir_inactivas
     };
     const encuestas = await encuestasService.listar(filtros);
     res.status(200).json(encuestas);

@@ -43,7 +43,8 @@ async function crear(datos) {
   }
 
   // 3. Regla de Negocio Crítica: Solo se encuesta si el servicio ya fue ENTREGADO al cliente
-  if (orden.estado !== 'entregado') {
+  const estadoNormalizado = String(orden.estado || '').toLowerCase().trim();
+  if (estadoNormalizado !== 'entregado') {
     throw new HttpError(
       400,
       `No se puede encuestar la orden #${ordenId} porque su estado es "${orden.estado}". Solo se admiten encuestas para órdenes con estado "entregado".`
@@ -53,7 +54,11 @@ async function crear(datos) {
   // 4. Regla de Negocio: Cada orden de servicio solo puede tener una única encuesta (evitar duplicidad)
   const encuestaExistente = await encuestasRepository.findByOrdenId(ordenId);
   if (encuestaExistente) {
-    throw new HttpError(400, `La orden de servicio #${ordenId} ya cuenta con una encuesta de satisfacción registrada (ID: ${encuestaExistente.id})`);
+    if (encuestaExistente.activo) {
+      throw new HttpError(400, `La orden de servicio #${ordenId} ya cuenta con una encuesta de satisfacción registrada (ID: ${encuestaExistente.id})`);
+    } else {
+      throw new HttpError(400, `La orden de servicio #${ordenId} ya tiene una encuesta registrada que fue dada de baja (ID: ${encuestaExistente.id}). Por integridad, no se admiten múltiples encuestas para la misma orden.`);
+    }
   }
 
   return await encuestasRepository.create(datos);
@@ -83,8 +88,11 @@ async function eliminar(id) {
 
   await encuestasRepository.remove(idValido);
   return {
-    mensaje: `Encuesta #${idValido} (Orden #${existente.ordenId}) eliminada exitosamente.`,
-    encuestaEliminada: existente
+    mensaje: `Encuesta #${idValido} (Orden #${existente.ordenId}) dada de baja exitosamente (soft delete).`,
+    encuestaEliminada: {
+      ...existente,
+      activo: false
+    }
   };
 }
 

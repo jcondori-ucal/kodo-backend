@@ -15,7 +15,8 @@ class Repuesto {
     stock = 0,
     stock_minimo = 5,
     precio,
-    ubicacion = null
+    ubicacion = null,
+    activo = 1
   }) {
     this.id = id ? Number(id) : undefined;
     this.codigo = codigo ? String(codigo).trim().toUpperCase() : '';
@@ -25,6 +26,7 @@ class Repuesto {
     this.stockMinimo = Number(stock_minimo);
     this.precio = Number(precio);
     this.ubicacion = ubicacion ? String(ubicacion).trim() : null;
+    this.activo = Boolean(Number(activo));
     this.alertaBajoStock = this.stock <= this.stockMinimo;
   }
 
@@ -38,7 +40,8 @@ class Repuesto {
       stock: row.stock,
       stock_minimo: row.stock_minimo,
       precio: Number(row.precio), // Convertir DECIMAL de mysql2 a Number
-      ubicacion: row.ubicacion
+      ubicacion: row.ubicacion,
+      activo: row.activo !== undefined ? row.activo : 1
     });
   }
 
