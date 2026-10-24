@@ -1,3 +1,4 @@
+// Aplicación Express: middlewares globales, rutas de los seis recursos y manejo de errores
 const express = require('express');
 const cors = require('cors');
 const rutas = require('./routes');
@@ -6,14 +7,20 @@ const { rutaNoEncontrada, manejarErrores } = require('./middlewares/manejarError
 const app = express();
 
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
-
 app.use(express.json());
 
 app.get('/', (req, res) => {
   res.json({
-    ok: true,
     proyecto: 'Kodo Motors API',
-    modulos: ['/api/servicios', '/api/sedes'],
+    modulos: [
+      '/api/sedes',
+      '/api/servicios',
+      '/api/catalogo',
+      '/api/reservas',
+      '/api/repuestos',
+      '/api/encuestas',
+      '/api/vehiculos',
+    ],
     salud: '/api/salud',
   });
 });

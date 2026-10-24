@@ -1,18 +1,20 @@
 {
-  "name": "kodo-api",
+  "name": "kodo-motor-backend",
   "version": "1.0.0",
-  "description": "API REST de Kodo Motors: módulos de Sedes y Servicios con Node.js, Express y MySQL",
+  "description": "API REST por capas de Kodo Motors: sedes, servicios, catálogo, reservas, repuestos y encuestas con Node.js, Express y MySQL",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "test": "node test-suite.js",
     "bd:levantar": "docker compose up -d",
     "bd:detener": "docker compose down",
     "bd:reiniciar": "docker compose down -v && docker compose up -d"
   },
   "keywords": ["kodo-motors", "api-rest", "express", "mysql", "ucal"],
-  "author": "Felipe, Rachel, Anthony, Omar y Alejandro",
+  "author": "Equipos E03, u2 y Grupo1-4 · EE2 Fundamentos de Desarrollo Back-End, UCAL",
   "license": "ISC",
+  "private": true,
   "engines": {
     "node": ">=18"
   },
@@ -20,7 +22,7 @@
     "cors": "~2.8.5",
     "dotenv": "~17.4.2",
     "express": "~5.2.1",
-    "mysql2": "~3.24.4"
+    "mysql2": "~3.24.6"
   },
   "devDependencies": {
     "nodemon": "~3.1.14"

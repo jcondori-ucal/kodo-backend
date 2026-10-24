@@ -1,13 +1,10 @@
-/**
- * Excepción HTTP personalizada para estandarizar respuestas de error en la API.
- */
+// Error con código HTTP: los servicios lo lanzan y el middleware manejarErrores lo responde
 class HttpError extends Error {
-  constructor(statusCode, message, detalles = null) {
-    super(message);
-    this.statusCode = statusCode;
-    this.detalles = detalles;
+  constructor(status, mensaje, errores) {
+    super(mensaje);
     this.name = 'HttpError';
-    Error.captureStackTrace(this, this.constructor);
+    this.status = status;
+    this.errores = errores;
   }
 }
 
