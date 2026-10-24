@@ -1,0 +1,66 @@
+{
+  "info": {
+    "name": "Kodo Motors - Reservas",
+    "description": "Pruebas del módulo de reservas (API REST por capas, Node + Express + MySQL).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base", "value": "http://localhost:4000/api" }
+  ],
+  "item": [
+    { "name": "0. DB check", "request": { "method": "GET", "url": "{{base}}/db-check" } },
+    { "name": "Lookups - Sedes", "request": { "method": "GET", "url": "{{base}}/sedes" } },
+    { "name": "Lookups - Servicios", "request": { "method": "GET", "url": "{{base}}/servicios" } },
+    { "name": "Lookups - Vehículos", "request": { "method": "GET", "url": "{{base}}/vehiculos" } },
+    { "name": "1. Listar reservas", "request": { "method": "GET", "url": "{{base}}/reservas" } },
+    { "name": "1b. Listar filtrado", "request": { "method": "GET", "url": "{{base}}/reservas?estado=pendiente&sede_id=1" } },
+    { "name": "2. Obtener reserva por id", "request": { "method": "GET", "url": "{{base}}/reservas/1" } },
+    {
+      "name": "3. Crear reserva (201)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base}}/reservas",
+        "body": { "mode": "raw", "raw": "{\n  \"fecha\": \"2026-10-22\",\n  \"hora\": \"11:00\",\n  \"sede_id\": 1,\n  \"servicio_id\": 2,\n  \"vehiculo_id\": 3,\n  \"observacion\": \"Cliente pide revisión rápida\"\n}" }
+      }
+    },
+    {
+      "name": "3b. Crear reserva inválida (400)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base}}/reservas",
+        "body": { "mode": "raw", "raw": "{\n  \"fecha\": \"22/10/2026\",\n  \"hora\": \"11:00\"\n}" }
+      }
+    },
+    {
+      "name": "3c. Crear con sede inexistente (404)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base}}/reservas",
+        "body": { "mode": "raw", "raw": "{\n  \"fecha\": \"2026-10-22\",\n  \"hora\": \"12:00\",\n  \"sede_id\": 99,\n  \"servicio_id\": 1,\n  \"vehiculo_id\": 1\n}" }
+      }
+    },
+    {
+      "name": "3d. Crear en horario ocupado (409)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base}}/reservas",
+        "body": { "mode": "raw", "raw": "{\n  \"fecha\": \"2026-10-20\",\n  \"hora\": \"09:00\",\n  \"sede_id\": 1,\n  \"servicio_id\": 1,\n  \"vehiculo_id\": 2\n}" }
+      }
+    },
+    {
+      "name": "4. Actualizar reserva (200)",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base}}/reservas/2",
+        "body": { "mode": "raw", "raw": "{\n  \"estado\": \"confirmada\",\n  \"observacion\": \"Confirmada por teléfono\"\n}" }
+      }
+    },
+    { "name": "5. Eliminar reserva (204)", "request": { "method": "DELETE", "url": "{{base}}/reservas/3" } },
+    { "name": "5b. Eliminar inexistente (404)", "request": { "method": "DELETE", "url": "{{base}}/reservas/999" } }
+  ]
+}
