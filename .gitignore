@@ -3,9 +3,15 @@ node_modules/
 
 # Variables de entorno con claves: NUNCA se suben
 .env
+.env.zip
+
+# Carpetas de trabajo locales de los equipos
+MODULOS_EQUIPO/
+.xd
 
 # Basura del sistema operativo y del editor
 .DS_Store
 __MACOSX/
 Thumbs.db
+*.log
 npm-debug.log*

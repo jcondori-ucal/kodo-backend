@@ -1,36 +1,42 @@
-const { conexion } = require('../config/db');
+// Repositorio de sedes: único lugar con SQL de la tabla sedes. Borrado lógico con la columna activa
+const { pool } = require('../config/db');
 
 async function listar(filtros = {}) {
   const condiciones = [];
   const valores = [];
+
+  if (!filtros.incluirInactivos) {
+    condiciones.push('activa = 1');
+  }
 
   if (filtros.distrito !== undefined) {
     condiciones.push('distrito = ?');
     valores.push(filtros.distrito);
   }
 
-  if (filtros.activa !== undefined) {
-    condiciones.push('activa = ?');
-    valores.push(filtros.activa);
-  }
-
   let consulta = 'SELECT * FROM sedes';
   if (condiciones.length > 0) consulta += ' WHERE ' + condiciones.join(' AND ');
   consulta += ' ORDER BY id';
 
-  const [filas] = await conexion.execute(consulta, valores);
+  const [filas] = await pool.execute(consulta, valores);
   return filas;
 }
 
 async function buscarPorId(id) {
-  const [filas] = await conexion.execute('SELECT * FROM sedes WHERE id = ?', [id]);
+  const [filas] = await pool.execute('SELECT * FROM sedes WHERE id = ? AND activa = 1', [id]);
+  return filas[0];
+}
+
+// Sin filtro de activa: el nombre es UNIQUE también para las sedes dadas de baja
+async function buscarPorNombre(nombre) {
+  const [filas] = await pool.execute('SELECT id, activa FROM sedes WHERE nombre = ?', [nombre]);
   return filas[0];
 }
 
 async function crear(sede) {
-  const [resultado] = await conexion.execute(
-    `INSERT INTO sedes (nombre, distrito, direccion, telefono, hora_apertura, hora_cierre, atiende_domingo, activa)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  const [resultado] = await pool.execute(
+    `INSERT INTO sedes (nombre, distrito, direccion, telefono, hora_apertura, hora_cierre, atiende_domingo)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       sede.nombre,
       sede.distrito,
@@ -39,18 +45,17 @@ async function crear(sede) {
       sede.hora_apertura,
       sede.hora_cierre,
       sede.atiende_domingo,
-      sede.activa,
     ]
   );
   return resultado.insertId;
 }
 
 async function actualizar(id, sede) {
-  await conexion.execute(
+  await pool.execute(
     `UPDATE sedes
         SET nombre = ?, distrito = ?, direccion = ?, telefono = ?,
-            hora_apertura = ?, hora_cierre = ?, atiende_domingo = ?, activa = ?
-      WHERE id = ?`,
+            hora_apertura = ?, hora_cierre = ?, atiende_domingo = ?
+      WHERE id = ? AND activa = 1`,
     [
       sede.nombre,
       sede.distrito,
@@ -59,14 +64,18 @@ async function actualizar(id, sede) {
       sede.hora_apertura,
       sede.hora_cierre,
       sede.atiende_domingo,
-      sede.activa,
       id,
     ]
   );
 }
 
+// Borrado lógico: la fila se conserva con activa = 0
 async function eliminar(id) {
-  await conexion.execute('DELETE FROM sedes WHERE id = ?', [id]);
+  const [resultado] = await pool.execute(
+    'UPDATE sedes SET activa = 0 WHERE id = ? AND activa = 1',
+    [id]
+  );
+  return resultado.affectedRows > 0;
 }
 
-module.exports = { listar, buscarPorId, crear, actualizar, eliminar };
+module.exports = { listar, buscarPorId, buscarPorNombre, crear, actualizar, eliminar };

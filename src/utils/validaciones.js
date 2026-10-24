@@ -1,17 +1,5 @@
-function crearError(mensaje, estado = 400, detalles = null) {
-  const error = new Error(mensaje);
-  error.estado = estado;
-  if (detalles) error.detalles = detalles;
-  return error;
-}
-
-function convertirId(valorRecibido) {
-  const numero = Number(valorRecibido);
-  if (!Number.isInteger(numero) || numero <= 0) {
-    throw crearError('El id debe ser un número entero positivo', 400);
-  }
-  return numero;
-}
+// Utilidades de validación compartidas por los modelos
+const HttpError = require('./http-error');
 
 function esTextoValido(valor, maximoCaracteres) {
   return (
@@ -36,26 +24,31 @@ function convertirBooleano(valor) {
   return null;
 }
 
+// ?incluir_inactivos=true en un listado muestra también los registros dados de baja
+function incluyeInactivos(valor) {
+  return valor === true || valor === 'true';
+}
+
 function revisarCamposPermitidos(datos, camposPermitidos) {
   if (!datos || typeof datos !== 'object' || Array.isArray(datos)) {
-    throw crearError('El cuerpo de la solicitud debe ser un objeto JSON', 400);
+    throw new HttpError(400, 'El cuerpo de la solicitud debe ser un objeto JSON');
   }
   const camposDesconocidos = Object.keys(datos).filter(
     (campo) => !camposPermitidos.includes(campo)
   );
   if (camposDesconocidos.length > 0) {
-    throw crearError('La solicitud tiene campos no permitidos', 400, {
-      campos_no_permitidos: camposDesconocidos,
-      campos_permitidos: camposPermitidos,
-    });
+    throw new HttpError(
+      400,
+      `La solicitud tiene campos no permitidos. Campos permitidos: ${camposPermitidos.join(', ')}`,
+      camposDesconocidos.map((campo) => `${campo} no es un campo permitido`)
+    );
   }
 }
 
 module.exports = {
-  crearError,
-  convertirId,
   esTextoValido,
   convertirNumero,
   convertirBooleano,
+  incluyeInactivos,
   revisarCamposPermitidos,
 };

@@ -1,14 +1,10 @@
+// Controlador de servicios: recibe req, llama al servicio y responde; los errores van a next()
 const logicaServicios = require('../services/servicios.service');
-const { convertirId } = require('../utils/validaciones');
 
 async function obtenerServicios(req, res, next) {
   try {
     const listaServicios = await logicaServicios.listarServicios(req.query);
-    res.status(200).json({
-      ok: true,
-      total: listaServicios.length,
-      datos: listaServicios,
-    });
+    res.status(200).json(listaServicios);
   } catch (error) {
     next(error);
   }
@@ -16,9 +12,8 @@ async function obtenerServicios(req, res, next) {
 
 async function obtenerServicioPorId(req, res, next) {
   try {
-    const idServicio = convertirId(req.params.id);
-    const servicioEncontrado = await logicaServicios.buscarServicioPorId(idServicio);
-    res.status(200).json({ ok: true, datos: servicioEncontrado });
+    const servicio = await logicaServicios.buscarServicioPorId(Number(req.params.id));
+    res.status(200).json(servicio);
   } catch (error) {
     next(error);
   }
@@ -27,11 +22,7 @@ async function obtenerServicioPorId(req, res, next) {
 async function registrarServicio(req, res, next) {
   try {
     const servicioNuevo = await logicaServicios.crearServicio(req.body);
-    res.status(201).json({
-      ok: true,
-      mensaje: 'Servicio registrado correctamente',
-      datos: servicioNuevo,
-    });
+    res.status(201).json(servicioNuevo);
   } catch (error) {
     next(error);
   }
@@ -39,13 +30,8 @@ async function registrarServicio(req, res, next) {
 
 async function modificarServicio(req, res, next) {
   try {
-    const idServicio = convertirId(req.params.id);
-    const servicioActualizado = await logicaServicios.actualizarServicio(idServicio, req.body);
-    res.status(200).json({
-      ok: true,
-      mensaje: 'Servicio actualizado correctamente',
-      datos: servicioActualizado,
-    });
+    const servicioActualizado = await logicaServicios.actualizarServicio(Number(req.params.id), req.body);
+    res.status(200).json(servicioActualizado);
   } catch (error) {
     next(error);
   }
@@ -53,13 +39,8 @@ async function modificarServicio(req, res, next) {
 
 async function borrarServicio(req, res, next) {
   try {
-    const idServicio = convertirId(req.params.id);
-    const servicioEliminado = await logicaServicios.eliminarServicio(idServicio);
-    res.status(200).json({
-      ok: true,
-      mensaje: 'Servicio eliminado correctamente',
-      datos: servicioEliminado,
-    });
+    await logicaServicios.eliminarServicio(Number(req.params.id));
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

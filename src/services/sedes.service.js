@@ -1,6 +1,7 @@
+// Servicio de sedes: reglas de negocio; no conoce req/res ni SQL
 const repositorio = require('../repositories/sedes.repository');
 const modelo = require('../models/sede.model');
-const { crearError } = require('../utils/validaciones');
+const HttpError = require('../utils/http-error');
 
 async function listarSedes(filtros = {}) {
   const filtrosLimpios = modelo.validarFiltros(filtros);
@@ -10,14 +11,25 @@ async function listarSedes(filtros = {}) {
 async function buscarSedePorId(id) {
   const sede = await repositorio.buscarPorId(id);
   if (!sede) {
-    throw crearError(`No existe una sede con id ${id}`, 404);
+    throw new HttpError(404, `No existe una sede con id ${id}`);
   }
   return sede;
+}
+
+// El nombre es único también frente a las sedes dadas de baja
+async function verificarNombreLibre(nombre, idActual = null) {
+  const otra = await repositorio.buscarPorNombre(nombre);
+  if (!otra || otra.id === idActual) return;
+  if (otra.activa) {
+    throw new HttpError(409, `Ya existe una sede con el nombre "${nombre}"`);
+  }
+  throw new HttpError(409, `El nombre "${nombre}" pertenece a una sede dada de baja (id ${otra.id})`);
 }
 
 async function crearSede(datos) {
   modelo.revisarCampos(datos);
   const sedeLimpia = modelo.validarSede(datos);
+  await verificarNombreLibre(sedeLimpia.nombre);
 
   const idNuevo = await repositorio.crear(sedeLimpia);
   return buscarSedePorId(idNuevo);
@@ -26,22 +38,24 @@ async function crearSede(datos) {
 async function actualizarSede(id, cambios) {
   modelo.revisarCampos(cambios);
   if (Object.keys(cambios).length === 0) {
-    throw crearError('Envía al menos un campo para actualizar', 400);
+    throw new HttpError(400, 'Envía al menos un campo para actualizar');
   }
 
   const sedeActual = await buscarSedePorId(id);
 
   const sedeCombinada = { ...sedeActual, ...cambios };
   const sedeLimpia = modelo.validarSede(sedeCombinada);
+  await verificarNombreLibre(sedeLimpia.nombre, id);
 
   await repositorio.actualizar(id, sedeLimpia);
   return buscarSedePorId(id);
 }
 
 async function eliminarSede(id) {
-  const sedeEliminada = await buscarSedePorId(id);
-  await repositorio.eliminar(id);
-  return sedeEliminada;
+  const eliminada = await repositorio.eliminar(id);
+  if (!eliminada) {
+    throw new HttpError(404, `No existe una sede con id ${id}`);
+  }
 }
 
 module.exports = {
