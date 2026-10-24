@@ -1,76 +1,58 @@
 /**
  * Controlador: Gestión HTTP de Encuestas de Satisfacción (Kodo Motors)
- * Maneja req/res, captura excepciones y responde con códigos HTTP semánticos y JSON.
+ * Maneja req/res y responde con JSON y códigos HTTP; los errores van a next()
+ * y los responde el middleware manejarErrores.
  */
 const encuestasService = require('../services/encuestas.service');
-const HttpError = require('../utils/http-error');
 
-async function listar(req, res) {
+async function listar(req, res, next) {
   try {
     const filtros = {
       puntuacion: req.query.puntuacion,
       recomendaria: req.query.recomendaria,
-      incluir_inactivas: req.query.incluir_inactivas
+      incluir_inactivos: req.query.incluir_inactivos
     };
     const encuestas = await encuestasService.listar(filtros);
     res.status(200).json(encuestas);
   } catch (error) {
-    responderError(res, error);
+    next(error);
   }
 }
 
-async function obtenerPorId(req, res) {
+async function obtenerPorId(req, res, next) {
   try {
-    const { id } = req.params;
-    const encuesta = await encuestasService.obtenerPorId(id);
+    const encuesta = await encuestasService.obtenerPorId(Number(req.params.id));
     res.status(200).json(encuesta);
   } catch (error) {
-    responderError(res, error);
+    next(error);
   }
 }
 
-async function crear(req, res) {
+async function crear(req, res, next) {
   try {
     const nueva = await encuestasService.crear(req.body);
     res.status(201).json(nueva);
   } catch (error) {
-    responderError(res, error);
+    next(error);
   }
 }
 
-async function actualizar(req, res) {
+async function actualizar(req, res, next) {
   try {
-    const { id } = req.params;
-    const actualizada = await encuestasService.actualizar(id, req.body);
+    const actualizada = await encuestasService.actualizar(Number(req.params.id), req.body);
     res.status(200).json(actualizada);
   } catch (error) {
-    responderError(res, error);
+    next(error);
   }
 }
 
-async function eliminar(req, res) {
+async function eliminar(req, res, next) {
   try {
-    const { id } = req.params;
-    const resultado = await encuestasService.eliminar(id);
-    res.status(200).json(resultado);
+    await encuestasService.eliminar(Number(req.params.id));
+    res.status(204).send();
   } catch (error) {
-    responderError(res, error);
+    next(error);
   }
-}
-
-function responderError(res, error) {
-  if (error instanceof HttpError || error.statusCode) {
-    const status = error.statusCode || 400;
-    return res.status(status).json({
-      error: error.message,
-      detalles: error.detalles || undefined
-    });
-  }
-
-  console.error('🔥 [CRÍTICO] Error interno no controlado en Encuestas:', error);
-  return res.status(500).json({
-    error: 'Error interno del servidor. Por favor contacte al administrador.'
-  });
 }
 
 module.exports = {

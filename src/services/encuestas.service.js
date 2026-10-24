@@ -1,28 +1,20 @@
 /**
  * Servicio: Reglas de Negocio para Encuestas de Satisfacción (Kodo Motors)
  * Valida estado de la orden de servicio ('entregado') e impide encuestas duplicadas.
+ * El id ya llega validado por el middleware validarId.
  */
 const encuestasRepository = require('../repositories/encuestas.repository');
 const Encuesta = require('../models/encuesta.model');
 const HttpError = require('../utils/http-error');
-
-function validarId(id) {
-  const numero = Number(id);
-  if (!Number.isInteger(numero) || numero <= 0) {
-    throw new HttpError(400, 'El parámetro ID debe ser un número entero positivo');
-  }
-  return numero;
-}
 
 async function listar(filtros = {}) {
   return await encuestasRepository.findAll(filtros);
 }
 
 async function obtenerPorId(id) {
-  const idValido = validarId(id);
-  const encuesta = await encuestasRepository.findById(idValido);
+  const encuesta = await encuestasRepository.findById(id);
   if (!encuesta) {
-    throw new HttpError(404, `Encuesta con ID ${idValido} no encontrada`);
+    throw new HttpError(404, `Encuesta con ID ${id} no encontrada`);
   }
   return encuesta;
 }
@@ -55,9 +47,9 @@ async function crear(datos) {
   const encuestaExistente = await encuestasRepository.findByOrdenId(ordenId);
   if (encuestaExistente) {
     if (encuestaExistente.activo) {
-      throw new HttpError(400, `La orden de servicio #${ordenId} ya cuenta con una encuesta de satisfacción registrada (ID: ${encuestaExistente.id})`);
+      throw new HttpError(409, `La orden de servicio #${ordenId} ya cuenta con una encuesta de satisfacción registrada (ID: ${encuestaExistente.id})`);
     } else {
-      throw new HttpError(400, `La orden de servicio #${ordenId} ya tiene una encuesta registrada que fue dada de baja (ID: ${encuestaExistente.id}). Por integridad, no se admiten múltiples encuestas para la misma orden.`);
+      throw new HttpError(409, `La orden de servicio #${ordenId} ya tiene una encuesta registrada que fue dada de baja (ID: ${encuestaExistente.id}). Por integridad, no se admiten múltiples encuestas para la misma orden.`);
     }
   }
 
@@ -65,8 +57,7 @@ async function crear(datos) {
 }
 
 async function actualizar(id, datos) {
-  const idValido = validarId(id);
-  const existente = await obtenerPorId(idValido);
+  const existente = await obtenerPorId(id);
 
   const errores = Encuesta.validar(datos, true);
   if (errores.length > 0) {
@@ -79,25 +70,17 @@ async function actualizar(id, datos) {
     comentario: datos.comentario !== undefined ? datos.comentario : existente.comentario
   };
 
-  return await encuestasRepository.update(idValido, datosCompletos);
+  return await encuestasRepository.update(id, datosCompletos);
 }
 
 async function eliminar(id) {
-  const idValido = validarId(id);
-  const existente = await obtenerPorId(idValido);
+  await obtenerPorId(id);
 
-  await encuestasRepository.remove(idValido);
-  return {
-    mensaje: `Encuesta #${idValido} (Orden #${existente.ordenId}) dada de baja exitosamente (soft delete).`,
-    encuestaEliminada: {
-      ...existente,
-      activo: false
-    }
-  };
+  // Borrado lógico: activo pasa a 0, la fila se conserva
+  await encuestasRepository.remove(id);
 }
 
 module.exports = {
-  validarId,
   listar,
   obtenerPorId,
   crear,

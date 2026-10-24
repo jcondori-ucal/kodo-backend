@@ -5,7 +5,7 @@
 const { pool } = require('../config/db');
 const Encuesta = require('../models/encuesta.model');
 
-async function findAll({ puntuacion, recomendaria, incluir_inactivas } = {}) {
+async function findAll({ puntuacion, recomendaria, incluir_inactivos } = {}) {
   let sql = `
     SELECT e.*, o.tecnico, o.costo, o.estado AS orden_estado
     FROM encuestas e
@@ -15,7 +15,7 @@ async function findAll({ puntuacion, recomendaria, incluir_inactivas } = {}) {
   const params = [];
 
   // Soft Delete: por defecto solo listar encuestas activas
-  if (incluir_inactivas !== 'true' && incluir_inactivas !== true) {
+  if (incluir_inactivos !== 'true' && incluir_inactivos !== true) {
     sql += ' AND e.activo = 1';
   }
 
@@ -45,7 +45,7 @@ async function findAll({ puntuacion, recomendaria, incluir_inactivas } = {}) {
   });
 }
 
-async function findById(id, { incluir_inactivas = false } = {}) {
+async function findById(id, { incluir_inactivos = false } = {}) {
   let sql = `
     SELECT e.*, o.tecnico, o.costo, o.estado AS orden_estado
     FROM encuestas e
@@ -54,7 +54,7 @@ async function findById(id, { incluir_inactivas = false } = {}) {
   `;
   const params = [id];
 
-  if (!incluir_inactivas) {
+  if (!incluir_inactivos) {
     sql += ' AND e.activo = 1';
   }
 
