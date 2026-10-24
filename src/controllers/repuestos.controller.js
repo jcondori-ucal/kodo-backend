@@ -1,11 +1,11 @@
 /**
  * Controlador: Gestión HTTP de Repuestos (Kodo Motors)
- * Maneja req/res, captura excepciones y responde con JSON y códigos HTTP semánticos.
+ * Maneja req/res y responde con JSON y códigos HTTP; los errores van a next()
+ * y los responde el middleware manejarErrores.
  */
 const repuestosService = require('../services/repuestos.service');
-const HttpError = require('../utils/http-error');
 
-async function listar(req, res) {
+async function listar(req, res, next) {
   try {
     const filtros = {
       modelo_compatible: req.query.modelo_compatible,
@@ -15,62 +15,44 @@ async function listar(req, res) {
     const repuestos = await repuestosService.listar(filtros);
     res.status(200).json(repuestos);
   } catch (error) {
-    responderError(res, error);
+    next(error);
   }
 }
 
-async function obtenerPorId(req, res) {
+async function obtenerPorId(req, res, next) {
   try {
-    const { id } = req.params;
-    const repuesto = await repuestosService.obtenerPorId(id);
+    const repuesto = await repuestosService.obtenerPorId(Number(req.params.id));
     res.status(200).json(repuesto);
   } catch (error) {
-    responderError(res, error);
+    next(error);
   }
 }
 
-async function crear(req, res) {
+async function crear(req, res, next) {
   try {
     const nuevo = await repuestosService.crear(req.body);
     res.status(201).json(nuevo);
   } catch (error) {
-    responderError(res, error);
+    next(error);
   }
 }
 
-async function actualizar(req, res) {
+async function actualizar(req, res, next) {
   try {
-    const { id } = req.params;
-    const actualizado = await repuestosService.actualizar(id, req.body);
+    const actualizado = await repuestosService.actualizar(Number(req.params.id), req.body);
     res.status(200).json(actualizado);
   } catch (error) {
-    responderError(res, error);
+    next(error);
   }
 }
 
-async function eliminar(req, res) {
+async function eliminar(req, res, next) {
   try {
-    const { id } = req.params;
-    const resultado = await repuestosService.eliminar(id);
-    res.status(200).json(resultado);
+    await repuestosService.eliminar(Number(req.params.id));
+    res.status(204).send();
   } catch (error) {
-    responderError(res, error);
+    next(error);
   }
-}
-
-function responderError(res, error) {
-  if (error instanceof HttpError || error.statusCode) {
-    const status = error.statusCode || 400;
-    return res.status(status).json({
-      error: error.message,
-      detalles: error.detalles || undefined
-    });
-  }
-
-  console.error('🔥 [CRÍTICO] Error interno no controlado en Repuestos:', error);
-  return res.status(500).json({
-    error: 'Error interno del servidor. Por favor contacte al administrador.'
-  });
 }
 
 module.exports = {

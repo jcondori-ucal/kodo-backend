@@ -1,17 +1,18 @@
 /**
  * Rutas: Endpoints del recurso Repuestos (Kodo Motors)
- * Prefijo: /api/repuestos
+ * Prefijo: /api/repuestos · DELETE es borrado lógico
  */
 const { Router } = require('express');
 const repuestosController = require('../controllers/repuestos.controller');
+const validarId = require('../middlewares/validarId');
 
 const router = Router();
 
 // Handlers pasados por referencia (sin paréntesis)
 router.get('/', repuestosController.listar);
-router.get('/:id', repuestosController.obtenerPorId);
+router.get('/:id', validarId, repuestosController.obtenerPorId);
 router.post('/', repuestosController.crear);
-router.put('/:id', repuestosController.actualizar);
-router.delete('/:id', repuestosController.eliminar);
+router.put('/:id', validarId, repuestosController.actualizar);
+router.delete('/:id', validarId, repuestosController.eliminar);
 
 module.exports = router;

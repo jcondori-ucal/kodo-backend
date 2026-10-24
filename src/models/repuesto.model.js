@@ -93,6 +93,11 @@ class Repuesto {
       }
     }
 
+    // 7. Borrado lógico: la bandera solo cambia con DELETE
+    if (datos.activo !== undefined) {
+      errores.push('El campo "activo" no se puede enviar; para dar de baja usa DELETE');
+    }
+
     return errores;
   }
 }
