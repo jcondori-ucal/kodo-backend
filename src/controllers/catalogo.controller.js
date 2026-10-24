@@ -1,10 +1,10 @@
 // Controlador: recibe req, llama al servicio y responde con res.
-// Los errores se pasan a next() y los atiende el middleware errorHandler.
+// Los errores se pasan a next() y los atiende el middleware manejarErrores.
 const catalogoService = require('../services/catalogo.service');
 
 async function listar(req, res, next) {
   try {
-    const catalogo = await catalogoService.listar();
+    const catalogo = await catalogoService.listar(req.query);
     res.status(200).json(catalogo);
   } catch (error) {
     next(error);

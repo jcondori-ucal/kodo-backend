@@ -4,7 +4,7 @@ const COMBUSTIBLES = ['gasolina', 'hibrido', 'diesel'];
 const TRANSMISIONES = ['mecanica', 'automatica'];
 
 class Catalogo {
-  constructor({ id, modelo, version, anio, precio_usd, stock = 0, combustible, transmision, destacado = false }) {
+  constructor({ id, modelo, version, anio, precio_usd, stock = 0, combustible, transmision, destacado = false, activo = true }) {
     this.id = id;
     this.modelo = modelo;
     this.version = version;
@@ -14,6 +14,7 @@ class Catalogo {
     this.combustible = combustible;
     this.transmision = transmision;
     this.destacado = destacado;
+    this.activo = activo;
   }
 
   // Convierte una fila de MySQL en un objeto Catalogo
@@ -22,6 +23,7 @@ class Catalogo {
       ...row,
       precio_usd: Number(row.precio_usd), // mysql2 devuelve DECIMAL como texto
       destacado: Boolean(row.destacado), // MySQL guarda TINYINT(1) como 0/1
+      activo: Boolean(row.activo),
     });
   }
 
@@ -55,6 +57,10 @@ class Catalogo {
     }
     if (destacado !== undefined && typeof destacado !== 'boolean') {
       errores.push('destacado debe ser true o false');
+    }
+    // Borrado lógico: la bandera solo cambia con DELETE
+    if (datos.activo !== undefined) {
+      errores.push('activo no se puede enviar; para dar de baja usa DELETE');
     }
     return errores;
   }

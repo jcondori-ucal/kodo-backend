@@ -1,11 +1,11 @@
 /**
- * Rutas del recurso Catálogo. Se montan en /api/catalogo desde main.js.
+ * Rutas del recurso Catálogo. Se montan en /api/catalogo desde src/routes/index.js.
  *
- *   GET    /api/catalogo          lista
+ *   GET    /api/catalogo          lista (?incluir_inactivos=true muestra también los de baja)
  *   GET    /api/catalogo/:id      un vehículo
  *   POST   /api/catalogo          crea
  *   PUT    /api/catalogo/:id      actualiza
- *   DELETE /api/catalogo/:id      elimina
+ *   DELETE /api/catalogo/:id      da de baja (borrado lógico)
  */
 const { Router } = require('express');
 const catalogoController = require('../controllers/catalogo.controller');
