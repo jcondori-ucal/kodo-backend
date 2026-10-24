@@ -3,6 +3,9 @@
 -- Docker ejecuta este archivo automáticamente la primera vez.
 -- Sin Docker: ábrelo en MySQL Workbench y ejecútalo completo.
 -- =====================================================================
+-- Asegura que las tildes, la ñ y los mensajes del trigger se guarden en utf8mb4
+SET NAMES utf8mb4;
+
 CREATE DATABASE IF NOT EXISTS kodo_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE kodo_db;
 
