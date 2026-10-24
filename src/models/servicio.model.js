@@ -1,8 +1,9 @@
+// Modelo: reglas de validación de un servicio. La baja se hace solo con DELETE (borrado lógico)
+const HttpError = require('../utils/http-error');
 const {
-  crearError,
   esTextoValido,
   convertirNumero,
-  convertirBooleano,
+  incluyeInactivos,
   revisarCamposPermitidos,
 } = require('../utils/validaciones');
 
@@ -15,7 +16,8 @@ const CATEGORIAS_PERMITIDAS = [
   'planchado_pintura',
 ];
 
-const CAMPOS_PERMITIDOS = ['nombre', 'categoria', 'descripcion', 'precio', 'duracion_min', 'activo'];
+// activo no está: la bandera solo cambia con DELETE
+const CAMPOS_PERMITIDOS = ['nombre', 'categoria', 'descripcion', 'precio', 'duracion_min'];
 
 const PRECIO_MAXIMO = 999999.99;
 
@@ -50,13 +52,8 @@ function validarServicio(datos) {
     errores.push('duracion_min debe ser un número entero de minutos mayor que 0');
   }
 
-  const activo = datos.activo === undefined ? true : convertirBooleano(datos.activo);
-  if (activo === null) {
-    errores.push('activo debe ser true o false');
-  }
-
   if (errores.length > 0) {
-    throw crearError('Datos del servicio no válidos', 400, errores);
+    throw new HttpError(400, 'Datos del servicio no válidos', errores);
   }
 
   return {
@@ -65,7 +62,6 @@ function validarServicio(datos) {
     descripcion: tieneDescripcion ? datos.descripcion.trim() : null,
     precio: Math.round(precio * 100) / 100,
     duracion_min: duracionMinutos,
-    activo: activo ? 1 : 0,
   };
 }
 
@@ -74,15 +70,13 @@ function validarFiltros(filtros = {}) {
 
   if (filtros.categoria !== undefined) {
     if (!CATEGORIAS_PERMITIDAS.includes(filtros.categoria)) {
-      throw crearError(`categoria debe ser una de: ${CATEGORIAS_PERMITIDAS.join(', ')}`, 400);
+      throw new HttpError(400, `categoria debe ser una de: ${CATEGORIAS_PERMITIDAS.join(', ')}`);
     }
     filtrosLimpios.categoria = filtros.categoria;
   }
 
-  if (filtros.activo !== undefined) {
-    const activo = convertirBooleano(filtros.activo);
-    if (activo === null) throw crearError('El filtro activo debe ser true o false', 400);
-    filtrosLimpios.activo = activo ? 1 : 0;
+  if (incluyeInactivos(filtros.incluir_inactivos)) {
+    filtrosLimpios.incluirInactivos = true;
   }
 
   return filtrosLimpios;
