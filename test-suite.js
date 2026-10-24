@@ -1,21 +1,40 @@
 /**
- * Suite de Pruebas de Verificación Automatizada (Kodo Motors)
+ * Suite de Pruebas de Verificación Automatizada (Kodo Motors) — npm test
+ * No necesita la base de datos: los repositorios se reemplazan por funciones de prueba.
  * Valida:
- * 1. Confirmación de CERO sentencias "DELETE FROM" (Soft Delete garantizado)
- * 2. Restricción estricta de encuestas únicamente para órdenes en estado "entregado"
- * 3. Bloqueo de eliminación de repuestos con stock > 0
- * 4. Eliminación lógica (soft delete) en Repuestos y Encuestas (activo = false)
- * 5. Ausencia de contraseñas por defecto en db.js
+ * 1. Cero sentencias "DELETE FROM" en src/ (borrado lógico garantizado)
+ * 2. Ninguna contraseña en db.js, docker-compose.yml ni .env.example
+ * 3. Reglas de negocio de repuestos (no dar de baja con stock > 0)
+ * 4. Reglas de negocio de encuestas (solo órdenes entregadas, una por orden)
+ * 5. Borrado lógico en los seis recursos (404 si ya estaba dado de baja)
+ * 6. Validaciones de los modelos (la bandera activo/activa no se acepta en el body)
+ * 7. Contrato común: validarId y manejarErrores
  */
 
 const fs = require('fs');
 const path = require('path');
+const HttpError = require('./src/utils/http-error');
 const Repuesto = require('./src/models/repuesto.model');
 const Encuesta = require('./src/models/encuesta.model');
+const Catalogo = require('./src/models/catalogo.model');
+const reservaModelo = require('./src/models/reserva.model');
+const sedeModelo = require('./src/models/sede.model');
+const servicioModelo = require('./src/models/servicio.model');
 const repuestosService = require('./src/services/repuestos.service');
 const encuestasService = require('./src/services/encuestas.service');
+const sedesService = require('./src/services/sedes.service');
+const serviciosService = require('./src/services/servicios.service');
+const catalogoService = require('./src/services/catalogo.service');
+const reservaService = require('./src/services/reserva.service');
 const repuestosRepository = require('./src/repositories/repuestos.repository');
 const encuestasRepository = require('./src/repositories/encuestas.repository');
+const sedesRepository = require('./src/repositories/sedes.repository');
+const serviciosRepository = require('./src/repositories/servicios.repository');
+const catalogoRepository = require('./src/repositories/catalogo.repository');
+const reservaRepository = require('./src/repositories/reserva.repository');
+const validarId = require('./src/middlewares/validarId');
+const { manejarErrores } = require('./src/middlewares/manejarErrores');
+const { pool } = require('./src/config/db');
 
 const resultados = [];
 
@@ -29,14 +48,38 @@ function registrarPrueba(codigo, descripcion, paso, esperado, obtenido) {
   }
 }
 
+// Ejecuta fn y devuelve el error lanzado (o null si no lanzó nada)
+async function capturarError(fn) {
+  try {
+    await fn();
+    return null;
+  } catch (error) {
+    return error;
+  }
+}
+
+function leer(rutaRelativa) {
+  return fs.readFileSync(path.join(__dirname, rutaRelativa), 'utf8');
+}
+
+// Respuesta falsa de Express para probar el manejador de errores
+function respuestaFalsa() {
+  return {
+    codigo: null,
+    cuerpo: null,
+    status(codigo) { this.codigo = codigo; return this; },
+    json(cuerpo) { this.cuerpo = cuerpo; return this; },
+  };
+}
+
 async function ejecutarSuite() {
   console.log('===============================================================');
   console.log('🧪 INICIANDO SUITE DE PRUEBAS DE CALIDAD (QA) - KODO MOTORS');
   console.log('===============================================================\n');
 
-  // --- SECCIÓN 1: VERIFICACIÓN DE QUE NO SE USE "DELETE FROM" (SQL) ---
+  // --- SECCIÓN 1: NINGÚN "DELETE FROM" EN EL CÓDIGO ---
   console.log('🔍 1. Verificación de Código Fuente (Auditoría Anti-Hard Delete)...');
-  
+
   function scanDirForHardDelete(dir) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     let hallazgos = [];
@@ -58,208 +101,325 @@ async function ejecutarSuite() {
   const hardDeletes = scanDirForHardDelete(path.join(__dirname, 'src'));
   registrarPrueba(
     'CP-01',
-    'Confirmación de ausencia total de sentencias SQL "DELETE FROM" en src/',
+    'Ausencia total de sentencias SQL "DELETE FROM" en src/',
     hardDeletes.length === 0,
     '0 sentencias DELETE FROM en el backend',
-    `${hardDeletes.length} sentencias encontradas`
+    `${hardDeletes.length} sentencias encontradas: ${hardDeletes.map((h) => h.file).join(', ')}`
   );
 
-  // --- SECCIÓN 2: AUDITORÍA DE SEGURIDAD EN DB.JS ---
-  console.log('\n🔒 2. Auditoría de Seguridad de Credenciales (db.js)...');
-  const dbJsContent = fs.readFileSync(path.join(__dirname, 'src/config/db.js'), 'utf8');
-  const tieneClaveQuemada = dbJsContent.includes("'kodo123'") || dbJsContent.includes('"kodo123"');
+  // --- SECCIÓN 2: SIN CREDENCIALES EN EL REPOSITORIO ---
+  console.log('\n🔒 2. Auditoría de Seguridad de Credenciales...');
+
+  const dbJs = leer('src/config/db.js');
+  const dbConValorPorDefecto = /process\.env\.DB_(PASSWORD|USER)\s*\|\|/.test(dbJs);
   registrarPrueba(
     'CP-02',
-    'Confirmación de que db.js no contiene contraseñas por defecto quemadas',
-    !tieneClaveQuemada,
-    'Sin contraseñas por defecto en db.js',
-    tieneClaveQuemada ? 'Contraseña quemada detectada' : 'Limpio y seguro'
+    'db.js no define usuario ni contraseña por defecto',
+    !dbConValorPorDefecto,
+    'Credenciales solo desde el .env',
+    dbConValorPorDefecto ? 'Valor por defecto encontrado' : 'Limpio'
   );
 
-  // --- SECCIÓN 3: PRUEBAS DE REGLAS DE NEGOCIO - REPUESTOS (SOFT DELETE) ---
-  console.log('\n📦 3. Reglas de Negocio de Repuestos (Soft Delete)...');
+  const compose = leer('docker-compose.yml');
+  const composeConValorPorDefecto = /\$\{[A-Z_]*(PASSWORD|USER)[A-Z_]*:-/.test(compose);
+  registrarPrueba(
+    'CP-03',
+    'docker-compose.yml no trae credenciales por defecto (${VAR:-valor})',
+    !composeConValorPorDefecto,
+    'Variables exigidas con ${VAR:?mensaje}',
+    composeConValorPorDefecto ? 'Valor por defecto encontrado' : 'Limpio'
+  );
 
-  // Guardar métodos originales para restaurarlos al final
-  const origRepFindById = repuestosRepository.findById;
-  const origRepRemove = repuestosRepository.remove;
-  const origEncFindById = encuestasRepository.findById;
-  const origEncRemove = encuestasRepository.remove;
-  const origEncFindOrden = encuestasRepository.findOrdenServicioById;
-  const origEncFindByOrden = encuestasRepository.findByOrdenId;
-  const origEncCreate = encuestasRepository.create;
-
-  // CP-03: Bloqueo de eliminación si stock > 0
-  repuestosRepository.findById = async () => new Repuesto({
-    id: 10,
-    codigo: 'TST-001',
-    nombre: 'Filtro Test',
-    modelo_compatible: 'CX-5',
-    stock: 4,
-    stock_minimo: 2,
-    precio: 80,
-    activo: 1
-  });
-
-  try {
-    await repuestosService.eliminar(10);
-    registrarPrueba('CP-03', 'Bloquear baja de repuesto si aún cuenta con stock > 0', false, 'Error 400', 'Permitió eliminar');
-  } catch (err) {
-    registrarPrueba(
-      'CP-03',
-      'Bloquear baja de repuesto si aún cuenta con stock > 0',
-      err.statusCode === 400 && err.message.includes('stock disponible'),
-      'HTTP 400 con advertencia de stock',
-      `HTTP ${err.statusCode}: ${err.message}`
-    );
-  }
-
-  // CP-04: Soft delete permitido cuando stock == 0
-  repuestosRepository.findById = async () => new Repuesto({
-    id: 11,
-    codigo: 'TST-002',
-    nombre: 'Bujía Test',
-    modelo_compatible: 'Mazda3',
-    stock: 0,
-    stock_minimo: 2,
-    precio: 35,
-    activo: 1
-  });
-
-  let repuestoActualizadoSoftDelete = false;
-  repuestosRepository.remove = async (id) => {
-    repuestoActualizadoSoftDelete = true;
-    return true;
-  };
-
-  const resRepSoftDelete = await repuestosService.eliminar(11);
+  // Cada contraseña del .env.example debe ser texto que describe qué va, no un valor
+  const clavesEjemplo = leer('.env.example')
+    .split(/\r?\n/)
+    .filter((linea) => /^[A-Z_]*PASSWORD[A-Z_]*=/.test(linea))
+    .map((linea) => linea.split('=').slice(1).join('='));
+  const todasDescriptivas = clavesEjemplo.length > 0 && clavesEjemplo.every((valor) => valor.startsWith('contraseña_'));
   registrarPrueba(
     'CP-04',
-    'Ejecución exitosa de Soft Delete en repuesto con stock 0 (activo pasa a false)',
-    repuestoActualizadoSoftDelete && resRepSoftDelete.repuestoEliminado.activo === false,
-    'activo=false y llamada a soft delete',
-    `llamado=${repuestoActualizadoSoftDelete}, activo=${resRepSoftDelete.repuestoEliminado.activo}`
+    '.env.example solo describe las contraseñas, no las incluye',
+    todasDescriptivas,
+    'Cada *_PASSWORD con un texto "contraseña_..."',
+    `Valores: ${clavesEjemplo.length} revisados, descriptivos=${todasDescriptivas}`
   );
 
-  // --- SECCIÓN 4: REGLAS DE NEGOCIO - ENCUESTAS (SOLO ORDEN ENTREGADA) ---
+  // --- SECCIÓN 3: REGLAS DE NEGOCIO - REPUESTOS ---
+  console.log('\n📦 3. Reglas de Negocio de Repuestos (Borrado lógico)...');
+
+  const origRep = { ...repuestosRepository };
+  const origEnc = { ...encuestasRepository };
+  const origSedes = { ...sedesRepository };
+  const origServicios = { ...serviciosRepository };
+  const origCatalogo = { ...catalogoRepository };
+  const origReserva = { ...reservaRepository };
+
+  repuestosRepository.findById = async () => new Repuesto({
+    id: 10, codigo: 'TST-001', nombre: 'Filtro Test', modelo_compatible: 'CX-5',
+    stock: 4, stock_minimo: 2, precio: 80, activo: 1
+  });
+  let error = await capturarError(() => repuestosService.eliminar(10));
+  registrarPrueba(
+    'CP-05',
+    'Bloquear baja de repuesto si aún cuenta con stock > 0',
+    error instanceof HttpError && error.status === 400 && error.message.includes('stock disponible'),
+    'HTTP 400 con advertencia de stock',
+    error ? `HTTP ${error.status}: ${error.message}` : 'Permitió eliminar'
+  );
+
+  repuestosRepository.findById = async () => new Repuesto({
+    id: 11, codigo: 'TST-002', nombre: 'Bujía Test', modelo_compatible: 'Mazda3',
+    stock: 0, stock_minimo: 2, precio: 35, activo: 1
+  });
+  let llamadoBajaRepuesto = false;
+  repuestosRepository.remove = async () => { llamadoBajaRepuesto = true; return true; };
+  error = await capturarError(() => repuestosService.eliminar(11));
+  registrarPrueba(
+    'CP-06',
+    'Borrado lógico de repuesto con stock 0',
+    !error && llamadoBajaRepuesto,
+    'Sin error y llamada a remove() (UPDATE activo = 0)',
+    `error=${error && error.message}, remove llamado=${llamadoBajaRepuesto}`
+  );
+
+  repuestosRepository.findByCodigo = async () => new Repuesto({
+    id: 12, codigo: 'TST-003', nombre: 'Pastilla', modelo_compatible: 'CX-30', precio: 50, activo: 0
+  });
+  error = await capturarError(() => repuestosService.crear({
+    codigo: 'TST-003', nombre: 'Pastilla nueva', modelo_compatible: 'CX-30', precio: 55
+  }));
+  registrarPrueba(
+    'CP-07',
+    'Código de repuesto que pertenece a uno dado de baja → 409',
+    error instanceof HttpError && error.status === 409 && error.message.includes('dado de baja'),
+    'HTTP 409 aclarando que está dado de baja',
+    error ? `HTTP ${error.status}: ${error.message}` : 'Permitió crear'
+  );
+
+  // --- SECCIÓN 4: REGLAS DE NEGOCIO - ENCUESTAS ---
   console.log('\n📋 4. Reglas de Negocio de Encuestas (Orden Entregada)...');
 
-  // CP-05: Rechazo de encuesta con orden en estado 'en_proceso'
-  encuestasRepository.findOrdenServicioById = async () => ({ id: 20, estado: 'en_proceso' });
   encuestasRepository.findByOrdenId = async () => null;
 
-  try {
-    await encuestasService.crear({ orden_id: 20, puntuacion: 5, recomendaria: true });
-    registrarPrueba('CP-05', 'Rechazar encuesta para orden en estado "en_proceso"', false, 'HTTP 400', 'Permitió crear');
-  } catch (err) {
+  for (const [codigo, estado] of [['CP-08', 'en_proceso'], ['CP-09', 'listo']]) {
+    encuestasRepository.findOrdenServicioById = async () => ({ id: 20, estado });
+    error = await capturarError(() => encuestasService.crear({ orden_id: 20, puntuacion: 5, recomendaria: true }));
     registrarPrueba(
-      'CP-05',
-      'Rechazar encuesta para orden en estado "en_proceso"',
-      err.statusCode === 400 && err.message.includes('entregado'),
+      codigo,
+      `Rechazar encuesta para orden en estado "${estado}"`,
+      error instanceof HttpError && error.status === 400 && error.message.includes('entregado'),
       'HTTP 400 indicando orden no entregada',
-      `HTTP ${err.statusCode}: ${err.message}`
+      error ? `HTTP ${error.status}: ${error.message}` : 'Permitió crear'
     );
   }
 
-  // CP-06: Rechazo de encuesta con orden en estado 'listo'
-  encuestasRepository.findOrdenServicioById = async () => ({ id: 21, estado: 'listo' });
-  try {
-    await encuestasService.crear({ orden_id: 21, puntuacion: 4, recomendaria: true });
-    registrarPrueba('CP-06', 'Rechazar encuesta para orden en estado "listo"', false, 'HTTP 400', 'Permitió crear');
-  } catch (err) {
-    registrarPrueba(
-      'CP-06',
-      'Rechazar encuesta para orden en estado "listo"',
-      err.statusCode === 400 && err.message.includes('entregado'),
-      'HTTP 400 indicando orden no entregada',
-      `HTTP ${err.statusCode}: ${err.message}`
-    );
-  }
-
-  // CP-07: Rechazo de encuesta con orden inexistente
   encuestasRepository.findOrdenServicioById = async () => null;
-  try {
-    await encuestasService.crear({ orden_id: 999, puntuacion: 5, recomendaria: true });
-    registrarPrueba('CP-07', 'Rechazar encuesta para orden inexistente (404)', false, 'HTTP 404', 'Permitió crear');
-  } catch (err) {
-    registrarPrueba(
-      'CP-07',
-      'Rechazar encuesta para orden inexistente (404)',
-      err.statusCode === 404,
-      'HTTP 404',
-      `HTTP ${err.statusCode}: ${err.message}`
-    );
-  }
+  error = await capturarError(() => encuestasService.crear({ orden_id: 999, puntuacion: 5, recomendaria: true }));
+  registrarPrueba(
+    'CP-10',
+    'Rechazar encuesta para orden inexistente (404)',
+    error instanceof HttpError && error.status === 404,
+    'HTTP 404',
+    error ? `HTTP ${error.status}: ${error.message}` : 'Permitió crear'
+  );
 
-  // CP-08: Aceptación de encuesta para orden en estado 'entregado'
   encuestasRepository.findOrdenServicioById = async () => ({ id: 22, estado: 'entregado' });
   encuestasRepository.findByOrdenId = async () => null;
   encuestasRepository.create = async (datos) => new Encuesta({
-    id: 1,
-    orden_id: datos.orden_id,
-    puntuacion: datos.puntuacion,
-    recomendaria: datos.recomendaria,
-    comentario: datos.comentario || null,
-    activo: 1
+    id: 1, orden_id: datos.orden_id, puntuacion: datos.puntuacion,
+    recomendaria: datos.recomendaria, comentario: datos.comentario || null, activo: 1
   });
-
   const nuevaEncuesta = await encuestasService.crear({ orden_id: 22, puntuacion: 5, recomendaria: true, comentario: 'Excelente' });
   registrarPrueba(
-    'CP-08',
-    'Aceptar y registrar encuesta cuando la orden está en estado "entregado"',
+    'CP-11',
+    'Aceptar encuesta cuando la orden está en estado "entregado"',
     nuevaEncuesta && nuevaEncuesta.ordenId === 22 && nuevaEncuesta.activo === true,
     'Encuesta creada con orden 22 y activo=true',
     `Creada ordenId=${nuevaEncuesta?.ordenId}, activo=${nuevaEncuesta?.activo}`
   );
 
-  // CP-09: Rechazar encuesta duplicada para la misma orden
   encuestasRepository.findByOrdenId = async () => new Encuesta({ id: 1, orden_id: 22, puntuacion: 5, recomendaria: true, activo: 1 });
-  try {
-    await encuestasService.crear({ orden_id: 22, puntuacion: 5, recomendaria: true });
-    registrarPrueba('CP-09', 'Rechazar registro de segunda encuesta para la misma orden', false, 'HTTP 400', 'Permitió duplicar');
-  } catch (err) {
+  error = await capturarError(() => encuestasService.crear({ orden_id: 22, puntuacion: 5, recomendaria: true }));
+  registrarPrueba(
+    'CP-12',
+    'Rechazar una segunda encuesta para la misma orden (409)',
+    error instanceof HttpError && error.status === 409 && error.message.includes('ya cuenta con una encuesta'),
+    'HTTP 409 por duplicidad',
+    error ? `HTTP ${error.status}: ${error.message}` : 'Permitió duplicar'
+  );
+
+  // --- SECCIÓN 5: BORRADO LÓGICO EN LOS SEIS RECURSOS ---
+  console.log('\n🗑️ 5. Borrado lógico en los seis recursos...');
+
+  encuestasRepository.findById = async () => new Encuesta({ id: 30, orden_id: 22, puntuacion: 5, recomendaria: true, activo: 1 });
+  let llamadoBajaEncuesta = false;
+  encuestasRepository.remove = async () => { llamadoBajaEncuesta = true; return true; };
+  error = await capturarError(() => encuestasService.eliminar(30));
+  registrarPrueba(
+    'CP-13',
+    'Borrado lógico de encuesta (remove() en lugar de DELETE físico)',
+    !error && llamadoBajaEncuesta,
+    'Sin error y llamada a remove()',
+    `error=${error && error.message}, remove llamado=${llamadoBajaEncuesta}`
+  );
+
+  // Si el repositorio no encuentra una fila activa que dar de baja, el servicio responde 404
+  repuestosRepository.findById = async () => null;
+  encuestasRepository.findById = async () => null;
+  sedesRepository.eliminar = async () => false;
+  serviciosRepository.eliminar = async () => false;
+  catalogoRepository.remove = async () => false;
+  reservaRepository.eliminar = async () => false;
+
+  const recursos = [
+    ['CP-14', 'una sede', () => sedesService.eliminarSede(5)],
+    ['CP-15', 'un servicio', () => serviciosService.eliminarServicio(5)],
+    ['CP-16', 'un vehículo del catálogo', () => catalogoService.eliminar(5)],
+    ['CP-17', 'una reserva', () => reservaService.eliminar(5)],
+    ['CP-18', 'un repuesto', () => repuestosService.eliminar(5)],
+    ['CP-19', 'una encuesta', () => encuestasService.eliminar(5)],
+  ];
+  for (const [codigo, nombre, eliminar] of recursos) {
+    error = await capturarError(eliminar);
     registrarPrueba(
-      'CP-09',
-      'Rechazar registro de segunda encuesta para la misma orden',
-      err.statusCode === 400 && err.message.includes('ya cuenta con una encuesta'),
-      'HTTP 400 por duplicidad',
-      `HTTP ${err.statusCode}: ${err.message}`
+      codigo,
+      `Dar de baja ${nombre} que no existe o ya está de baja → 404`,
+      error instanceof HttpError && error.status === 404,
+      'HTTP 404',
+      error ? `HTTP ${error.status}: ${error.message}` : 'No lanzó error'
     );
   }
 
-  // --- SECCIÓN 5: SOFT DELETE EN ENCUESTAS ---
-  console.log('\n🗑️ 5. Soft Delete en Encuestas...');
-
-  encuestasRepository.findById = async () => new Encuesta({
-    id: 30,
-    orden_id: 22,
-    puntuacion: 5,
-    recomendaria: true,
-    activo: 1
-  });
-
-  let encuestaActualizadaSoftDelete = false;
-  encuestasRepository.remove = async (id) => {
-    encuestaActualizadaSoftDelete = true;
-    return true;
-  };
-
-  const resEncSoftDelete = await encuestasService.eliminar(30);
+  sedesRepository.buscarPorNombre = async () => ({ id: 3, activa: false });
+  error = await capturarError(() => sedesService.crearSede({
+    nombre: 'Kodo San Miguel', distrito: 'San Miguel', direccion: 'Av. La Marina 2300',
+    telefono: '015661122', hora_apertura: '09:00', hora_cierre: '18:00'
+  }));
   registrarPrueba(
-    'CP-10',
-    'Ejecución exitosa de Soft Delete en encuestas (activo pasa a false sin DELETE físico)',
-    encuestaActualizadaSoftDelete && resEncSoftDelete.encuestaEliminada.activo === false,
-    'activo=false y llamada a soft delete',
-    `llamado=${encuestaActualizadaSoftDelete}, activo=${resEncSoftDelete.encuestaEliminada.activo}`
+    'CP-20',
+    'Nombre de sede que pertenece a una sede dada de baja → 409',
+    error instanceof HttpError && error.status === 409 && error.message.includes('dada de baja'),
+    'HTTP 409 aclarando que está dada de baja',
+    error ? `HTTP ${error.status}: ${error.message}` : 'Permitió crear'
+  );
+
+  // --- SECCIÓN 6: VALIDACIONES DE LOS MODELOS ---
+  console.log('\n🧾 6. Validaciones de los modelos...');
+
+  error = await capturarError(() => sedeModelo.revisarCampos({ nombre: 'X', activa: false }));
+  registrarPrueba(
+    'CP-21',
+    'Sedes: activa no se acepta en el body',
+    error instanceof HttpError && error.status === 400 && error.errores.some((e) => e.includes('activa')),
+    'HTTP 400 con "activa no es un campo permitido"',
+    error ? `HTTP ${error.status}: ${JSON.stringify(error.errores)}` : 'Lo aceptó'
+  );
+
+  error = await capturarError(() => servicioModelo.revisarCampos({ nombre: 'X', activo: true }));
+  registrarPrueba(
+    'CP-22',
+    'Servicios: activo no se acepta en el body',
+    error instanceof HttpError && error.status === 400 && error.errores.some((e) => e.includes('activo')),
+    'HTTP 400 con "activo no es un campo permitido"',
+    error ? `HTTP ${error.status}: ${JSON.stringify(error.errores)}` : 'Lo aceptó'
+  );
+
+  error = await capturarError(() => sedeModelo.validarSede({ nombre: '', telefono: '123' }));
+  registrarPrueba(
+    'CP-23',
+    'Sedes: datos incompletos devuelven la lista de errores',
+    error instanceof HttpError && error.status === 400 && error.errores.length >= 4,
+    'HTTP 400 con un error por campo',
+    error ? `HTTP ${error.status}: ${error.errores.length} errores` : 'Lo aceptó'
+  );
+
+  const erroresCatalogo = Catalogo.validar({
+    modelo: 'CX-5', version: 'Grand Touring', anio: 2026, precio_usd: 38990,
+    combustible: 'gasolina', transmision: 'automatica', activo: false
+  });
+  registrarPrueba(
+    'CP-24',
+    'Catálogo: activo no se acepta en el body',
+    erroresCatalogo.length === 1 && erroresCatalogo[0].includes('activo'),
+    'Un error sobre activo',
+    JSON.stringify(erroresCatalogo)
+  );
+
+  const erroresReservaVacia = reservaModelo.validar({});
+  const erroresReservaActivo = reservaModelo.validar({ activo: false }, { parcial: true });
+  registrarPrueba(
+    'CP-25',
+    'Reservas: campos obligatorios y activo rechazado',
+    erroresReservaVacia.length === 5 && erroresReservaActivo.length === 1,
+    '5 obligatorios faltantes; 1 error por activo',
+    `obligatorios=${erroresReservaVacia.length}, activo=${erroresReservaActivo.length}`
+  );
+
+  const erroresRepuesto = Repuesto.validar({ activo: 0 }, true);
+  const erroresEncuesta = Encuesta.validar({ activo: 0 }, true);
+  registrarPrueba(
+    'CP-26',
+    'Repuestos y encuestas: activo rechazado en la actualización',
+    erroresRepuesto.length === 1 && erroresEncuesta.length === 1,
+    'Un error por modelo',
+    `repuesto=${erroresRepuesto.length}, encuesta=${erroresEncuesta.length}`
+  );
+
+  // --- SECCIÓN 7: CONTRATO COMÚN ---
+  console.log('\n🧩 7. Contrato común (validarId y manejarErrores)...');
+
+  let errorRecibido = null;
+  validarId({ params: { id: 'abc' } }, {}, (err) => { errorRecibido = err; });
+  let siguienteSinError = false;
+  validarId({ params: { id: '7' } }, {}, (err) => { siguienteSinError = err === undefined; });
+  registrarPrueba(
+    'CP-27',
+    'validarId: "abc" → 400; "7" → continúa',
+    errorRecibido instanceof HttpError && errorRecibido.status === 400 && siguienteSinError,
+    'HttpError 400 y luego next() sin error',
+    `abc=${errorRecibido && errorRecibido.status}, 7 continúa=${siguienteSinError}`
+  );
+
+  let res = respuestaFalsa();
+  manejarErrores(new HttpError(400, 'Datos inválidos', ['nombre es obligatorio']), {}, res, () => {});
+  registrarPrueba(
+    'CP-28',
+    'manejarErrores: HttpError → { mensaje, errores }',
+    res.codigo === 400 && res.cuerpo.mensaje === 'Datos inválidos' && res.cuerpo.errores.length === 1,
+    '400 { mensaje, errores }',
+    `${res.codigo} ${JSON.stringify(res.cuerpo)}`
+  );
+
+  res = respuestaFalsa();
+  manejarErrores(Object.assign(new Error('Duplicate entry'), { code: 'ER_DUP_ENTRY' }), {}, res, () => {});
+  registrarPrueba(
+    'CP-29',
+    'manejarErrores: ER_DUP_ENTRY de MySQL → 409',
+    res.codigo === 409 && typeof res.cuerpo.mensaje === 'string',
+    '409 { mensaje }',
+    `${res.codigo} ${JSON.stringify(res.cuerpo)}`
+  );
+
+  res = respuestaFalsa();
+  const errorConsola = console.error;
+  console.error = () => {};
+  manejarErrores(new Error('detalle interno que no debe salir'), {}, res, () => {});
+  console.error = errorConsola;
+  registrarPrueba(
+    'CP-30',
+    'manejarErrores: error inesperado → 500 sin detalles internos',
+    res.codigo === 500 && !JSON.stringify(res.cuerpo).includes('detalle interno'),
+    '500 { mensaje: "Error interno del servidor" }',
+    `${res.codigo} ${JSON.stringify(res.cuerpo)}`
   );
 
   // Restaurar repositorios originales
-  repuestosRepository.findById = origRepFindById;
-  repuestosRepository.remove = origRepRemove;
-  encuestasRepository.findById = origEncFindById;
-  encuestasRepository.remove = origEncRemove;
-  encuestasRepository.findOrdenServicioById = origEncFindOrden;
-  encuestasRepository.findByOrdenId = origEncFindByOrden;
-  encuestasRepository.create = origEncCreate;
+  Object.assign(repuestosRepository, origRep);
+  Object.assign(encuestasRepository, origEnc);
+  Object.assign(sedesRepository, origSedes);
+  Object.assign(serviciosRepository, origServicios);
+  Object.assign(catalogoRepository, origCatalogo);
+  Object.assign(reservaRepository, origReserva);
 
   // Resumen final
   console.log('\n===============================================================');
@@ -272,7 +432,14 @@ async function ejecutarSuite() {
     console.error('⚠️ Se detectaron fallas en las pruebas.');
   }
   console.log('===============================================================\n');
+
+  // npm test falla si alguna prueba falla
+  process.exitCode = fallidas === 0 ? 0 : 1;
 }
 
-ejecutarSuite().catch(console.error);
-
+ejecutarSuite()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(() => pool.end());
