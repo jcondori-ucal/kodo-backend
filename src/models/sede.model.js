@@ -1,10 +1,13 @@
+// Modelo: reglas de validación de una sede. La baja se hace solo con DELETE (borrado lógico)
+const HttpError = require('../utils/http-error');
 const {
-  crearError,
   esTextoValido,
   convertirBooleano,
+  incluyeInactivos,
   revisarCamposPermitidos,
 } = require('../utils/validaciones');
 
+// activa no está: la bandera solo cambia con DELETE
 const CAMPOS_PERMITIDOS = [
   'nombre',
   'distrito',
@@ -13,7 +16,6 @@ const CAMPOS_PERMITIDOS = [
   'hora_apertura',
   'hora_cierre',
   'atiende_domingo',
-  'activa',
 ];
 
 const FORMATO_HORA = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
@@ -63,11 +65,8 @@ function validarSede(datos) {
     datos.atiende_domingo === undefined ? false : convertirBooleano(datos.atiende_domingo);
   if (atiendeDomingo === null) errores.push('atiende_domingo debe ser true o false');
 
-  const activa = datos.activa === undefined ? true : convertirBooleano(datos.activa);
-  if (activa === null) errores.push('activa debe ser true o false');
-
   if (errores.length > 0) {
-    throw crearError('Datos de la sede no válidos', 400, errores);
+    throw new HttpError(400, 'Datos de la sede no válidos', errores);
   }
 
   return {
@@ -78,7 +77,6 @@ function validarSede(datos) {
     hora_apertura: completarHora(datos.hora_apertura),
     hora_cierre: completarHora(datos.hora_cierre),
     atiende_domingo: atiendeDomingo ? 1 : 0,
-    activa: activa ? 1 : 0,
   };
 }
 
@@ -87,15 +85,13 @@ function validarFiltros(filtros = {}) {
 
   if (filtros.distrito !== undefined) {
     if (!esTextoValido(filtros.distrito, 60)) {
-      throw crearError('El filtro distrito no es válido', 400);
+      throw new HttpError(400, 'El filtro distrito no es válido');
     }
     filtrosLimpios.distrito = filtros.distrito.trim();
   }
 
-  if (filtros.activa !== undefined) {
-    const activa = convertirBooleano(filtros.activa);
-    if (activa === null) throw crearError('El filtro activa debe ser true o false', 400);
-    filtrosLimpios.activa = activa ? 1 : 0;
+  if (incluyeInactivos(filtros.incluir_inactivos)) {
+    filtrosLimpios.incluirInactivos = true;
   }
 
   return filtrosLimpios;

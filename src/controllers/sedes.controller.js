@@ -1,14 +1,10 @@
+// Controlador de sedes: recibe req, llama al servicio y responde; los errores van a next()
 const logicaSedes = require('../services/sedes.service');
-const { convertirId } = require('../utils/validaciones');
 
 async function obtenerSedes(req, res, next) {
   try {
     const listaSedes = await logicaSedes.listarSedes(req.query);
-    res.status(200).json({
-      ok: true,
-      total: listaSedes.length,
-      datos: listaSedes,
-    });
+    res.status(200).json(listaSedes);
   } catch (error) {
     next(error);
   }
@@ -16,9 +12,8 @@ async function obtenerSedes(req, res, next) {
 
 async function obtenerSedePorId(req, res, next) {
   try {
-    const idSede = convertirId(req.params.id);
-    const sedeEncontrada = await logicaSedes.buscarSedePorId(idSede);
-    res.status(200).json({ ok: true, datos: sedeEncontrada });
+    const sede = await logicaSedes.buscarSedePorId(Number(req.params.id));
+    res.status(200).json(sede);
   } catch (error) {
     next(error);
   }
@@ -27,11 +22,7 @@ async function obtenerSedePorId(req, res, next) {
 async function registrarSede(req, res, next) {
   try {
     const sedeNueva = await logicaSedes.crearSede(req.body);
-    res.status(201).json({
-      ok: true,
-      mensaje: 'Sede registrada correctamente',
-      datos: sedeNueva,
-    });
+    res.status(201).json(sedeNueva);
   } catch (error) {
     next(error);
   }
@@ -39,13 +30,8 @@ async function registrarSede(req, res, next) {
 
 async function modificarSede(req, res, next) {
   try {
-    const idSede = convertirId(req.params.id);
-    const sedeActualizada = await logicaSedes.actualizarSede(idSede, req.body);
-    res.status(200).json({
-      ok: true,
-      mensaje: 'Sede actualizada correctamente',
-      datos: sedeActualizada,
-    });
+    const sedeActualizada = await logicaSedes.actualizarSede(Number(req.params.id), req.body);
+    res.status(200).json(sedeActualizada);
   } catch (error) {
     next(error);
   }
@@ -53,13 +39,8 @@ async function modificarSede(req, res, next) {
 
 async function borrarSede(req, res, next) {
   try {
-    const idSede = convertirId(req.params.id);
-    const sedeEliminada = await logicaSedes.eliminarSede(idSede);
-    res.status(200).json({
-      ok: true,
-      mensaje: 'Sede eliminada correctamente',
-      datos: sedeEliminada,
-    });
+    await logicaSedes.eliminarSede(Number(req.params.id));
+    res.status(204).send();
   } catch (error) {
     next(error);
   }
