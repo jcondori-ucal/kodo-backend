@@ -92,7 +92,7 @@ Cualquier error ──▶ middlewares/manejarErrores.js ──▶ { "mensaje": "
 ### Estructura de carpetas
 
 ```
-kodo-motor-backend/
+kodo-backend/
 ├── database/
 │   ├── 01_schema.sql          # 14 tablas de kodo_db, trigger de encuestas
 │   └── 02_seed.sql            # datos de ejemplo
@@ -133,8 +133,8 @@ kodo-motor-backend/
 Requisitos: Node.js 18+, Docker Desktop abierto y Git.
 
 ```bash
-git clone https://github.com/rachelduarte/kodo-motor-backend.git
-cd kodo-motor-backend
+git clone https://github.com/jcondori-ucal/kodo-backend.git
+cd kodo-backend
 npm install
 ```
 
@@ -267,6 +267,4 @@ En ese caso, en el `.env`: `DB_PORT=3306` (o el puerto de tu MySQL).
 
 - `main` contiene los commits de los tres repositorios originales unidos por merge, no copiados.
   `git shortlog -sne` muestra a cada autor (`.mailmap` agrupa a quienes usaron dos correos).
-- Las ramas que no llegaron a `main` en sus repos originales se conservan como
-  `historial/u2/archivo-reservas`, `historial/u2/jeff` y `historial/g14/feature/encuestas-qa-docs`.
 - Cada paso de la fusión es un commit aparte con el formato `[TAG] módulo: descripción`.
